@@ -12,10 +12,10 @@ load_dotenv()
 MODE = "search"  # Options: "store", "search", "batch_search", "multi_video_search", "ultimate_search", "bulk_store"
 
 # For STORE mode - single video
-VIDEO_PATH = "bahu_480.mp4"
+VIDEO_PATH = "peop.mp4"
 
 # For SEARCH mode - single person in single video
-IMAGE_PATH = "katt.jpg"
+IMAGE_PATH = "new.jpg"
 
 # For BATCH_SEARCH mode - multiple people in ONE video
 BATCH_IMAGE_PATHS = [

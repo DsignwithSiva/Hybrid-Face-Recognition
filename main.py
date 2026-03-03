@@ -10,7 +10,6 @@ from config import MODE, DEVICE, VIDEO_NAMESPACE
 
 print(f"⚙️  HYBRID FACE SEARCH SYSTEM")
 print(f"   - Mode: {MODE.upper()}")
-print(f"   - Device: {DEVICE}")
 print(f"   - Video Namespace: {VIDEO_NAMESPACE}")
 
 # Imports are deferred here so the env vars above are set before TF loads
