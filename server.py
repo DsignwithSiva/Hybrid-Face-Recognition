@@ -235,23 +235,24 @@ async def get_namespaces():
 def _bg_store(jid: str, video_path: str, namespace: str,
               frame_skip: int, min_face: int, max_faces: int,
               gpu_batch: int, conflict: str):
-    _ensure_models()
-    sm = _store_modes
-
     # Map form conflict setting to auto-input response
     resp_map = {"overwrite": "o", "skip": "s", "cancel": "c"}
     auto_resp = resp_map.get(conflict, "s")
 
-    # Override module-level variables used by the function
-    sm.VIDEO_PATH = video_path
-    sm.VIDEO_NAMESPACE = namespace
-    sm.BASE_FRAME_SKIP = int(frame_skip)
-    sm.MIN_FACE_SIZE = int(min_face)
-    sm.MAX_FACES_TO_COLLECT = int(max_faces)
-    sm.GPU_BATCH_SIZE = int(gpu_batch)
-
     try:
         with _capture(jid), _auto_input(auto_resp):
+            _emit(jid, "log", text="🔧 Loading models (first run may take ~30s)...")
+            _ensure_models()
+            sm = _store_modes
+
+            # Override module-level variables used by the function
+            sm.VIDEO_PATH = video_path
+            sm.VIDEO_NAMESPACE = namespace
+            sm.BASE_FRAME_SKIP = int(frame_skip)
+            sm.MIN_FACE_SIZE = int(min_face)
+            sm.MAX_FACES_TO_COLLECT = int(max_faces)
+            sm.GPU_BATCH_SIZE = int(gpu_batch)
+
             sm.store_all_faces_from_video()
         _job_done(jid, {"mode": "store", "namespace": namespace})
     except Exception as e:
@@ -289,20 +290,19 @@ async def api_store(
 # ═══════════════════════════════════════════════════════════
 def _bg_search(jid: str, image_path: str, namespace: str,
                threshold: float, top_k: int, cluster: int):
-    _ensure_models()
-    sm = _search_modes
-
-    sm.IMAGE_PATH = image_path
-    sm.VIDEO_NAMESPACE = namespace
-    sm.DIST_THRESHOLD = float(threshold)
-    sm.TOP_K_RESULTS = int(top_k)
-    sm.TEMPORAL_CLUSTER_THRESHOLD = int(cluster)
-    # search_for_person_in_stored_faces also reads VIDEO_PATH for fps
-    # We pass a dummy so cv2 returns fps=0 (handled gracefully)
-    sm.VIDEO_PATH = ""
-
     try:
         with _capture(jid), _auto_input(""):
+            _emit(jid, "log", text="🔧 Loading models (first run may take ~30s)...")
+            _ensure_models()
+            sm = _search_modes
+
+            sm.IMAGE_PATH = image_path
+            sm.VIDEO_NAMESPACE = namespace
+            sm.DIST_THRESHOLD = float(threshold)
+            sm.TOP_K_RESULTS = int(top_k)
+            sm.TEMPORAL_CLUSTER_THRESHOLD = int(cluster)
+            sm.VIDEO_PATH = ""
+
             sm.search_for_person_in_stored_faces()
         _job_done(jid, {"mode": "search", "namespace": namespace})
     except Exception as e:
@@ -337,29 +337,24 @@ async def api_search(
 # ═══════════════════════════════════════════════════════════
 def _bg_batch_search(jid: str, image_paths: List[str], namespace: str,
                      threshold: float, top_k: int, cluster: int):
-    _ensure_models()
-    sm = _search_modes
-
-    sm.BATCH_IMAGE_PATHS = image_paths
-    sm.DIST_THRESHOLD = float(threshold)
-    sm.TOP_K_RESULTS = int(top_k)
-    sm.TEMPORAL_CLUSTER_THRESHOLD = int(cluster)
-
-    # Determine the correct input() response for namespace selection
-    # batch_search_multiple_people() lists namespaces and asks to pick one
     try:
-        index = _model_module.index
-        stats = index.describe_index_stats()
-        ns_list = list(stats.get("namespaces", {}).keys())
-        if namespace in ns_list:
-            auto_resp = str(ns_list.index(namespace) + 1)  # 1-based
-        else:
-            auto_resp = ""   # fall back to "bulk_videos_combined"
-    except Exception:
-        auto_resp = ""
+        # Determine correct auto-input response for namespace selection prompt
+        _ensure_models()
+        try:
+            ns_list = list(_model_module.index.describe_index_stats().get("namespaces", {}).keys())
+            auto_resp = str(ns_list.index(namespace) + 1) if namespace in ns_list else ""
+        except Exception:
+            auto_resp = ""
 
-    try:
         with _capture(jid), _auto_input(auto_resp):
+            _emit(jid, "log", text="🔧 Models ready, starting batch search...")
+            sm = _search_modes
+
+            sm.BATCH_IMAGE_PATHS = image_paths
+            sm.DIST_THRESHOLD = float(threshold)
+            sm.TOP_K_RESULTS = int(top_k)
+            sm.TEMPORAL_CLUSTER_THRESHOLD = int(cluster)
+
             sm.batch_search_multiple_people()
         _job_done(jid, {"mode": "batch_search", "namespace": namespace})
     except Exception as e:
@@ -402,18 +397,18 @@ def _bg_multi_video(jid: str, image_path: str, video_names: List[str],
     video_names: list of filenames like 'bahu_480.mp4'
     Derives namespace: video_bahu_480
     """
-    _ensure_models()
-    sm = _search_modes
-
-    sm.IMAGE_PATH = image_path
-    video_paths = video_names  # used only for namespace derivation
-    sm.VIDEO_PATHS = video_paths
-    sm.DIST_THRESHOLD = float(threshold)
-    sm.TOP_K_RESULTS = int(top_k)
-    sm.TEMPORAL_CLUSTER_THRESHOLD = int(cluster)
-
     try:
         with _capture(jid), _auto_input(""):
+            _emit(jid, "log", text="🔧 Loading models (first run may take ~30s)...")
+            _ensure_models()
+            sm = _search_modes
+
+            sm.IMAGE_PATH = image_path
+            sm.VIDEO_PATHS = video_names
+            sm.DIST_THRESHOLD = float(threshold)
+            sm.TOP_K_RESULTS = int(top_k)
+            sm.TEMPORAL_CLUSTER_THRESHOLD = int(cluster)
+
             sm.multi_video_search_one_person()
         _job_done(jid, {"mode": "multi_video_search", "videos": video_names})
     except Exception as e:
@@ -454,17 +449,18 @@ async def api_multi_video(
 # ═══════════════════════════════════════════════════════════
 def _bg_ultimate(jid: str, image_paths: List[str], video_names: List[str],
                  threshold: float, top_k: int, cluster: int):
-    _ensure_models()
-    sm = _search_modes
-
-    sm.BATCH_IMAGE_PATHS = image_paths
-    sm.VIDEO_PATHS = video_names
-    sm.DIST_THRESHOLD = float(threshold)
-    sm.TOP_K_RESULTS = int(top_k)
-    sm.TEMPORAL_CLUSTER_THRESHOLD = int(cluster)
-
     try:
         with _capture(jid), _auto_input(""):
+            _emit(jid, "log", text="🔧 Loading models (first run may take ~30s)...")
+            _ensure_models()
+            sm = _search_modes
+
+            sm.BATCH_IMAGE_PATHS = image_paths
+            sm.VIDEO_PATHS = video_names
+            sm.DIST_THRESHOLD = float(threshold)
+            sm.TOP_K_RESULTS = int(top_k)
+            sm.TEMPORAL_CLUSTER_THRESHOLD = int(cluster)
+
             sm.ultimate_search()
         _job_done(jid, {"mode": "ultimate_search"})
     except Exception as e:
@@ -508,13 +504,14 @@ async def api_ultimate(
 # MODE 6 — BULK STORE (Many videos → separate namespaces)
 # ═══════════════════════════════════════════════════════════
 def _bg_bulk_store(jid: str, video_paths: List[str]):
-    _ensure_models()
-    sm = _store_modes
-
-    sm.VIDEO_PATHS = video_paths
-
     try:
         with _capture(jid), _auto_input("s"):   # 's' = skip existing
+            _emit(jid, "log", text="🔧 Loading models (first run may take ~30s)...")
+            _ensure_models()
+            sm = _store_modes
+
+            sm.VIDEO_PATHS = video_paths
+
             sm.bulk_store_multiple_videos()
         _job_done(jid, {"mode": "bulk_store", "videos": len(video_paths)})
     except Exception as e:

@@ -41,6 +41,10 @@ def store_all_faces_from_video():
     print(f"📊 Video Info:")
     print(f"   - Duration: {duration:.1f}s")
     print(f"   - FPS: {fps:.1f}")
+    print(f"   - Total frames: {total_frames}")
+    print(f"   - Namespace: {VIDEO_NAMESPACE}")
+    print(f"   - Processing every {BASE_FRAME_SKIP} frames...")
+    print(f"   ⏳ Starting face extraction, please wait...")
 
     # Check if namespace already has data
     try:
@@ -91,6 +95,13 @@ def store_all_faces_from_video():
 
         frames_processed += 1
 
+        # Progress update every 5 seconds
+        now = time.time()
+        if now - last_progress_time >= 5:
+            pct = (frame_count / total_frames * 100) if total_frames > 0 else 0
+            elapsed = now - start_time
+            print(f"Progress: {pct:.1f}% | Faces: {faces_collected} | Time: {elapsed:.0f}s")
+            last_progress_time = now
 
         # Face detection
         detections = RetinaFace.detect_faces(frame, threshold=0.5)
