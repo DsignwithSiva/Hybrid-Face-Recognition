@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hybrid Face Recognition System</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+  <!-- Animated Background -->
+  <div class="bg-grid"></div>
+  <div class="bg-particles" id="particles"></div>
+
+  <!-- App Shell -->
+  <div class="app-shell">
+
+    <!-- ── Sidebar ─────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon"><i class="fa-solid fa-eye"></i></div>
+        <div class="logo-text">
+          <span class="logo-title">HybridFR</span>
+          <span class="logo-sub">Recognition Engine</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <span class="nav-label">OVERVIEW</span>
+        <a class="nav-item active" data-page="dashboard" href="#">
+          <i class="fa-solid fa-gauge-high"></i><span>Dashboard</span>
+        </a>
+
+        <span class="nav-label">MODES</span>
+        <a class="nav-item" data-page="store" href="#">
+          <i class="fa-solid fa-database"></i><span>Store Faces</span>
+          <div class="nav-badge">1</div>
+        </a>
+        <a class="nav-item" data-page="search" href="#">
+          <i class="fa-solid fa-magnifying-glass"></i><span>Search Person</span>
+          <div class="nav-badge">2</div>
+        </a>
+        <a class="nav-item" data-page="batch" href="#">
+          <i class="fa-solid fa-users"></i><span>Batch Search</span>
+          <div class="nav-badge">3</div>
+        </a>
+        <a class="nav-item" data-page="multivideo" href="#">
+          <i class="fa-solid fa-film"></i><span>Multi-Video</span>
+          <div class="nav-badge">4</div>
+        </a>
+        <a class="nav-item" data-page="ultimate" href="#">
+          <i class="fa-solid fa-rocket"></i><span>Ultimate Search</span>
+          <div class="nav-badge">5</div>
+        </a>
+        <a class="nav-item" data-page="bulkstore" href="#">
+          <i class="fa-solid fa-layer-group"></i><span>Bulk Store</span>
+          <div class="nav-badge">6</div>
+        </a>
+
+        <span class="nav-label">SYSTEM</span>
+        <a class="nav-item" data-page="results" href="#">
+          <i class="fa-solid fa-chart-bar"></i><span>Results</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="device-badge" id="deviceBadge">
+          <i class="fa-solid fa-microchip"></i>
+          <span id="deviceLabel">Detecting...</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── Main Content ─────────────────────────────────── -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="topbar-breadcrumb">
+          <span class="breadcrumb-root">HybridFR</span>
+          <i class="fa-solid fa-chevron-right"></i>
+          <span class="breadcrumb-current" id="breadcrumbCurrent">Dashboard</span>
+        </div>
+        <div class="topbar-right">
+          <div class="status-pill" id="statusPill">
+            <span class="status-dot"></span>
+            <span id="statusText">System Ready</span>
+          </div>
+          <button class="topbar-btn" title="Refresh"><i class="fa-solid fa-rotate-right"></i></button>
+          <button class="topbar-btn" title="Notifications"><i class="fa-solid fa-bell"></i><span class="notif-dot"></span></button>
+        </div>
+      </header>
+
+      <!-- Pages Container -->
+      <div class="pages">
+
+        <!-- ══ Dashboard ══════════════════════════════════════ -->
+        <section class="page active" id="page-dashboard">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">Dashboard</h1>
+              <p class="page-subtitle">Hybrid Face Recognition &amp; Vector Search Platform</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-ghost" onclick="simulateProcessing()">
+                <i class="fa-solid fa-play"></i> Run Demo
+              </button>
+              <button class="btn btn-primary" onclick="navigateTo('store')">
+                <i class="fa-solid fa-plus"></i> New Job
+              </button>
+            </div>
+          </div>
+
+          <!-- Stats Row -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon cyan"><i class="fa-solid fa-database"></i></div>
+              <div class="stat-body">
+                <span class="stat-value" id="stat-stored">0</span>
+                <span class="stat-label">Faces Stored</span>
+              </div>
+              <div class="stat-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +12%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon purple"><i class="fa-solid fa-bolt"></i></div>
+              <div class="stat-body">
+                <span class="stat-value" id="stat-searches">0</span>
+                <span class="stat-label">Searches Run</span>
+              </div>
+              <div class="stat-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +5%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon green"><i class="fa-solid fa-check-circle"></i></div>
+              <div class="stat-body">
+                <span class="stat-value" id="stat-accuracy">98.4%</span>
+                <span class="stat-label">Avg Accuracy</span>
+              </div>
+              <div class="stat-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +0.2%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon orange"><i class="fa-solid fa-clock"></i></div>
+              <div class="stat-body">
+                <span class="stat-value" id="stat-speed">0.12s</span>
+                <span class="stat-label">Search Latency</span>
+              </div>
+              <div class="stat-trend down"><i class="fa-solid fa-arrow-trend-down"></i> -8ms</div>
+            </div>
+          </div>
+
+          <!-- Mode Cards Grid -->
+          <h2 class="section-title">Recognition Modes</h2>
+          <div class="mode-grid">
+            <div class="mode-card" onclick="navigateTo('store')">
+              <div class="mode-card-glow"></div>
+              <div class="mode-card-num">01</div>
+              <div class="mode-icon"><i class="fa-solid fa-database"></i></div>
+              <h3>Store Faces</h3>
+              <p>Process a video and store all detected face embeddings into Pinecone vector DB. Run once per video.</p>
+              <div class="mode-tags">
+                <span class="tag">RetinaFace</span><span class="tag">Pinecone</span><span class="tag">FaceNet</span>
+              </div>
+              <button class="mode-btn">Launch <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+
+            <div class="mode-card" onclick="navigateTo('search')">
+              <div class="mode-card-glow glow-purple"></div>
+              <div class="mode-card-num">02</div>
+              <div class="mode-icon icon-purple"><i class="fa-solid fa-magnifying-glass"></i></div>
+              <h3>Search Person</h3>
+              <p>Instantly find when a specific person appears in stored video. Sub-second search via vector similarity.</p>
+              <div class="mode-tags">
+                <span class="tag">Cosine Sim</span><span class="tag">ANN Search</span>
+              </div>
+              <button class="mode-btn btn-purple">Launch <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+
+            <div class="mode-card" onclick="navigateTo('batch')">
+              <div class="mode-card-glow glow-green"></div>
+              <div class="mode-card-num">03</div>
+              <div class="mode-icon icon-green"><i class="fa-solid fa-users"></i></div>
+              <h3>Batch Search</h3>
+              <p>Search for multiple people simultaneously in a single stored video namespace.</p>
+              <div class="mode-tags">
+                <span class="tag">Multi-Person</span><span class="tag">Parallel</span>
+              </div>
+              <button class="mode-btn btn-green">Launch <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+
+            <div class="mode-card" onclick="navigateTo('multivideo')">
+              <div class="mode-card-glow glow-orange"></div>
+              <div class="mode-card-num">04</div>
+              <div class="mode-icon icon-orange"><i class="fa-solid fa-film"></i></div>
+              <h3>Multi-Video Search</h3>
+              <p>Track one person across multiple pre-stored videos. Perfect for surveillance correlation.</p>
+              <div class="mode-tags">
+                <span class="tag">Cross-Video</span><span class="tag">Temporal</span>
+              </div>
+              <button class="mode-btn btn-orange">Launch <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+
+            <div class="mode-card mode-card-gold" onclick="navigateTo('ultimate')">
+              <div class="mode-card-glow glow-gold"></div>
+              <div class="mode-card-num">05</div>
+              <div class="mode-icon icon-gold"><i class="fa-solid fa-rocket"></i></div>
+              <h3>Ultimate Search</h3>
+              <p>The most powerful mode — search multiple people across multiple videos in one unified operation.</p>
+              <div class="mode-tags">
+                <span class="tag tag-gold">All-in-One</span><span class="tag tag-gold">Comprehensive</span>
+              </div>
+              <button class="mode-btn btn-gold">Launch <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+
+            <div class="mode-card" onclick="navigateTo('bulkstore')">
+              <div class="mode-card-glow glow-pink"></div>
+              <div class="mode-card-num">06</div>
+              <div class="mode-icon icon-pink"><i class="fa-solid fa-layer-group"></i></div>
+              <h3>Bulk Store</h3>
+              <p>Index multiple videos in one batch operation. Prepares all data for ultimate search.</p>
+              <div class="mode-tags">
+                <span class="tag">Batch Index</span><span class="tag">Multi-Video</span>
+              </div>
+              <button class="mode-btn btn-pink">Launch <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+          </div>
+
+
+          
+        </section>
+
+        <!-- ══ Store Faces ════════════════════════════════════ -->
+        <section class="page" id="page-store">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title"><i class="fa-solid fa-database text-cyan"></i> Store Faces</h1>
+              <p class="page-subtitle">Mode 1 — Process a video and store all face embeddings into Pinecone.</p>
+            </div>
+          </div>
+
+          <div class="form-layout">
+            <div class="form-panel">
+              <h3 class="form-section-title"><i class="fa-solid fa-video"></i> Video Source</h3>
+
+              <div class="upload-zone" id="storeUploadZone" onclick="document.getElementById('storeVideoInput').click()">
+                <input type="file" id="storeVideoInput" accept="video/*" hidden onchange="handleVideoUpload(this,'storeUploadZone','storeVideoName')" />
+                <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                <p class="upload-title">Drop video file here</p>
+                <p class="upload-sub" id="storeVideoName">MP4, AVI, MKV — click or drag to upload</p>
+              </div>
+              <div class="temp-path-badge hidden" id="storeTempBadge">
+                <i class="fa-solid fa-circle-check"></i>
+                <span class="tpb-path" id="storeTempPath">—</span>
+                <span class="tpb-label">saved</span>
+              </div>
+
+              <div class="field-group">
+                <label class="field-label">Namespace <span class="field-hint">(auto-generated from filename)</span></label>
+                <div class="field-input-wrap">
+                  <i class="fa-solid fa-tag field-icon"></i>
+                  <input class="field-input" type="text" id="storeNamespace" placeholder="video_peop" value="video_peop" />
+                </div>
+              </div>
+
+              <h3 class="form-section-title mt"><i class="fa-solid fa-sliders"></i> Processing Parameters</h3>
+              <div class="params-grid">
+                <div class="param-item">
+                  <label class="param-label">Frame Skip</label>
+                  <input class="param-input" type="number" value="30" min="1" id="frameSkip" />
+                  <span class="param-unit">frames</span>
+                </div>
+                <div class="param-item">
+                  <label class="param-label">Min Face Size</label>
+                  <input class="param-input" type="number" value="80" min="20" id="minFaceSize" />
+                  <span class="param-unit">px</span>
+                </div>
+                <div class="param-item">
+                  <label class="param-label">Max Faces</label>
+                  <input class="param-input" type="number" value="500" id="maxFaces" />
+                  <span class="param-unit">faces</span>
+                </div>
+                <div class="param-item">
+                  <label class="param-label">GPU Batch</label>
+                  <input class="param-input" type="number" value="32" id="gpuBatch" />
+                  <span class="param-unit">imgs</span>
+                </div>
+              </div>
+
+              <div class="toggle-row">
+                <label class="toggle-label">Quality Checks</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="qualityChecks" />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <div class="conflict-section">
+                <label class="field-label">If Namespace Exists</label>
+                <div class="radio-group">
+                  <label class="radio-item"><input type="radio" name="conflict" value="overwrite" /> Overwrite</label>
+                  <label class="radio-item checked"><input type="radio" name="conflict" value="skip" checked /> Skip</label>
+                  <label class="radio-item"><input type="radio" name="conflict" value="cancel" /> Cancel</label>
+                </div>
+              </div>
+
+              <button class="btn btn-primary btn-full btn-lg" onclick="runMode('store')">
+                <i class="fa-solid fa-play"></i> Start Processing Video
+              </button>
+            </div>
+
+            <!-- Pipeline Preview -->
+            <div class="info-panel">
+              <h3 class="form-section-title"><i class="fa-solid fa-diagram-project"></i> Pipeline</h3>
+              <div class="pipeline">
+                <div class="pipeline-step active">
+                  <div class="ps-icon"><i class="fa-solid fa-video"></i></div>
+                  <div class="ps-body"><strong>Frame Extraction</strong><p>Every N frames sampled from video</p></div>
+                </div>
+                <div class="pipeline-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+                <div class="pipeline-step">
+                  <div class="ps-icon"><i class="fa-solid fa-face-smile"></i></div>
+                  <div class="ps-body"><strong>Face Detection</strong><p>RetinaFace detects all faces</p></div>
+                </div>
+                <div class="pipeline-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+                <div class="pipeline-step">
+                  <div class="ps-icon"><i class="fa-solid fa-brain"></i></div>
+                  <div class="ps-body"><strong>Embedding</strong><p>FaceNet encodes 512-dim vectors</p></div>
+                </div>
+                <div class="pipeline-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+                <div class="pipeline-step">
+                  <div class="ps-icon"><i class="fa-solid fa-database"></i></div>
+                  <div class="ps-body"><strong>Vector Storage</strong><p>Upserted into Pinecone index</p></div>
+                </div>
+              </div>
+
+              <div class="info-box mt">
+                <i class="fa-solid fa-lightbulb"></i>
+                <p>This step only needs to run <strong>once per video</strong>. After storing, all searches are sub-second regardless of video length.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress Section (hidden by default) -->
+          <div class="progress-section hidden" id="storeProgress">
+            <div class="progress-header">
+              <span><i class="fa-solid fa-spinner fa-spin"></i> Processing...</span>
+              <span id="storeProgressPct">0%</span>
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill" id="storeProgressBar" style="width:0%"></div>
+            </div>
+            <div class="progress-stats">
+              <span>Frames: <b id="p-frames">0</b></span>
+              <span>Faces Found: <b id="p-faces">0</b></span>
+              <span>Stored: <b id="p-stored">0</b></span>
+              <span>ETA: <b id="p-eta">--</b></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ Search Person ══════════════════════════════════ -->
+        <section class="page" id="page-search">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title"><i class="fa-solid fa-magnifying-glass text-purple"></i> Search Person</h1>
+              <p class="page-subtitle">Mode 2 — Find when a person appears in a stored video. Instant vector search.</p>
+            </div>
+          </div>
+
+          <div class="form-layout">
+            <div class="form-panel">
+              <h3 class="form-section-title"><i class="fa-solid fa-image"></i> Reference Image</h3>
+              <div class="upload-zone upload-zone-lg" id="searchUploadZone" onclick="document.getElementById('searchImageInput').click()">
+                <input type="file" id="searchImageInput" accept="image/*" hidden onchange="handleImageUpload(this,'searchUploadZone','searchPreview','searchUploadContent','searchTempBadge')" />
+                <div class="upload-preview" id="searchPreview" style="display:none">
+                  <img id="searchPreviewImg" src="" alt="preview" />
+                  <div class="upload-overlay">
+                    <i class="fa-solid fa-arrows-rotate"></i> Change photo
+                  </div>
+                </div>
+                <div class="upload-content" id="searchUploadContent">
+                  <div class="upload-icon icon-purple"><i class="fa-solid fa-user-plus"></i></div>
+                  <p class="upload-title">Drop or click to upload</p>
+                  <p class="upload-sub">JPG, PNG, WEBP — face must be clearly visible</p>
+                </div>
+              </div>
+              <div class="temp-path-badge hidden" id="searchTempBadge">
+                <i class="fa-solid fa-circle-check"></i>
+                <span class="tpb-path" id="searchTempPath"></span>
+                <span class="tpb-label">saved</span>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Target Namespace</label>
+                <div class="field-input-wrap">
+                  <i class="fa-solid fa-tag field-icon"></i>
+                  <input class="field-input" type="text" id="searchNamespace" placeholder="video_peop" value="video_peop" />
+                </div>
+              </div>
+
+              <h3 class="form-section-title mt"><i class="fa-solid fa-sliders"></i> Search Parameters</h3>
+              <div class="params-grid">
+                <div class="param-item">
+                  <label class="param-label">Threshold</label>
+                  <input class="param-input" type="number" value="0.50" step="0.01" min="0" max="1" id="distThreshold" />
+                  <span class="param-unit">dist</span>
+                </div>
+                <div class="param-item">
+                  <label class="param-label">Cluster Δ</label>
+                  <input class="param-input" type="number" value="30" id="clusterThreshold" />
+                  <span class="param-unit">frames</span>
+                </div>
+              </div>
+
+              <button class="btn btn-purple btn-full btn-lg" onclick="runMode('search')">
+                <i class="fa-solid fa-magnifying-glass"></i> Search Now
+              </button>
+            </div>
+
+            <!-- Info -->
+            <div class="info-panel">
+              <h3 class="form-section-title"><i class="fa-solid fa-circle-info"></i> How It Works</h3>
+              <div class="how-it-works">
+                <div class="hiw-step">
+                  <div class="hiw-num">1</div>
+                  <div>Reference photo is loaded &amp; face is detected with RetinaFace</div>
+                </div>
+                <div class="hiw-step">
+                  <div class="hiw-num">2</div>
+                  <div>FaceNet encodes it into a 512-dimensional L2-normalized vector</div>
+                </div>
+                <div class="hiw-step">
+                  <div class="hiw-num">3</div>
+                  <div>Pinecone ANN search retrieves top-K nearest stored embeddings</div>
+                </div>
+                <div class="hiw-step">
+                  <div class="hiw-num">4</div>
+                  <div>Matches below distance threshold are temporally clustered into appearance segments</div>
+                </div>
+              </div>
+              <div class="threshold-guide">
+                <h4>Threshold Guide</h4>
+                <div class="tg-row"><span class="tg-bar" style="width:40%; background:var(--green)"></span><span>0.30–0.40 — Strong match</span></div>
+                <div class="tg-row"><span class="tg-bar" style="width:60%; background:var(--cyan)"></span><span>0.40–0.50 — Good match (default)</span></div>
+                <div class="tg-row"><span class="tg-bar" style="width:80%; background:var(--orange)"></span><span>0.50–0.60 — Loose match</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Results -->
+          <div class="results-section hidden" id="searchResults">
+            <h3 class="section-title"><i class="fa-solid fa-chart-bar"></i> Search Results</h3>
+            <div id="searchResultsContent"></div>
+          </div>
+        </section>
+
+        <!-- ══ Batch Search ═══════════════════════════════════ -->
+        <section class="page" id="page-batch">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title"><i class="fa-solid fa-users text-green"></i> Batch Search</h1>
+              <p class="page-subtitle">Mode 3 — Search for multiple people simultaneously in a single stored video.</p>
+            </div>
+          </div>
+
+          <div class="form-layout">
+            <div class="form-panel">
+              <h3 class="form-section-title"><i class="fa-solid fa-images"></i> Reference Images</h3>
+
+              <div class="people-list" id="batchPeopleList">
+                <div class="person-item" data-id="1">
+                  <div class="person-avatar" id="pav-b1"><i class="fa-solid fa-user"></i></div>
+                  <div class="person-fields">
+                    <input class="field-input" type="text" placeholder="Person 1" />
+                    <label class="upload-chip">
+                      <input type="file" id="pup-b1" accept="image/*" hidden onchange="handlePersonUpload(this,'pav-b1','pchip-b1')" />
+                      <i class="fa-solid fa-camera"></i>
+                      <span id="pchip-b1">Upload photo</span>
+                    </label>
+                  </div>
+                  <button class="person-remove" onclick="removePerson(this)"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="person-item" data-id="2">
+                  <div class="person-avatar" id="pav-b2"><i class="fa-solid fa-user"></i></div>
+                  <div class="person-fields">
+                    <input class="field-input" type="text" placeholder="Person 2" />
+                    <label class="upload-chip">
+                      <input type="file" id="pup-b2" accept="image/*" hidden onchange="handlePersonUpload(this,'pav-b2','pchip-b2')" />
+                      <i class="fa-solid fa-camera"></i>
+                      <span id="pchip-b2">Upload photo</span>
+                    </label>
+                  </div>
+                  <button class="person-remove" onclick="removePerson(this)"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+
+              <button class="btn btn-ghost btn-full" onclick="addPerson()">
+                <i class="fa-solid fa-plus"></i> Add Person
+              </button>
+
+              <div class="field-group mt">
+                <label class="field-label">Target Namespace <span class="field-hint">(from Store/Bulk-Store step)</span></label>
+                <div class="field-input-wrap">
+                  <i class="fa-solid fa-tag field-icon"></i>
+                  <input class="field-input" type="text" id="batchNamespace" placeholder="video_namespace" value="video_peop" />
+                </div>
+              </div>
+
+              <button class="btn btn-green btn-full btn-lg mt" onclick="runMode('batch_search')">
+                <i class="fa-solid fa-play"></i> Run Batch Search
+              </button>
+            </div>
+
+            <div class="info-panel">
+              <h3 class="form-section-title"><i class="fa-solid fa-circle-info"></i> Batch Search Info</h3>
+              <div class="info-box">
+                <i class="fa-solid fa-lightbulb"></i>
+                <p>Each person is searched independently but shares the same database namespace. Results are grouped per person.</p>
+              </div>
+              <div class="comparison-table">
+                <div class="ct-header"><span>Feature</span><span>Single</span><span>Batch</span></div>
+                <div class="ct-row"><span>People</span><span>1</span><span>Multiple</span></div>
+                <div class="ct-row"><span>Videos</span><span>1</span><span>1</span></div>
+                <div class="ct-row"><span>Speed</span><span>⚡</span><span>⚡⚡</span></div>
+                <div class="ct-row"><span>Use Case</span><span>Quick Check</span><span>Group Scan</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ Multi-Video Search ════════════════════════════ -->
+        <section class="page" id="page-multivideo">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title"><i class="fa-solid fa-film text-orange"></i> Multi-Video Search</h1>
+              <p class="page-subtitle">Mode 4 — Track one person across multiple stored videos.</p>
+            </div>
+          </div>
+
+          <div class="form-layout">
+            <div class="form-panel">
+              <h3 class="form-section-title"><i class="fa-solid fa-image"></i> Reference Person</h3>
+              <div class="upload-zone" id="mvUploadZone" onclick="document.getElementById('mvImageInput').click()">
+                <input type="file" id="mvImageInput" accept="image/*" hidden onchange="handleImageUpload(this,'mvUploadZone','mvPreview','mvUploadContent','mvTempBadge')" />
+                <div class="upload-preview" id="mvPreview" style="display:none">
+                  <img id="mvPreviewImg" src="" alt="preview" />
+                  <div class="upload-overlay"><i class="fa-solid fa-arrows-rotate"></i> Change photo</div>
+                </div>
+                <div class="upload-content" id="mvUploadContent">
+                  <div class="upload-icon icon-orange"><i class="fa-solid fa-user-plus"></i></div>
+                  <p class="upload-title">Drop or click to upload</p>
+                  <p class="upload-sub">Reference person photo</p>
+                </div>
+              </div>
+              <div class="temp-path-badge hidden" id="mvTempBadge">
+                <i class="fa-solid fa-circle-check"></i>
+                <span class="tpb-path" id="mvTempPath"></span>
+                <span class="tpb-label">saved</span>
+              </div>
+
+              <h3 class="form-section-title mt"><i class="fa-solid fa-film"></i> Target Videos</h3>
+              <div class="video-list" id="multiVideoList">
+                <div class="video-item">
+                  <div class="video-icon"><i class="fa-solid fa-film"></i></div>
+                  <input class="field-input" type="text" placeholder="video.mp4" value="bahu_480.mp4" />
+                  <button class="person-remove" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="video-item">
+                  <div class="video-icon"><i class="fa-solid fa-film"></i></div>
+                  <input class="field-input" type="text" placeholder="video.mp4" value="120_fps.mp4" />
+                  <button class="person-remove" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="video-item">
+                  <div class="video-icon"><i class="fa-solid fa-film"></i></div>
+                  <input class="field-input" type="text" placeholder="video.mp4" value="bhaai.mp4" />
+                  <button class="person-remove" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+              <button class="btn btn-ghost btn-full" onclick="addVideo()">
+                <i class="fa-solid fa-plus"></i> Add Video
+              </button>
+
+              <button class="btn btn-orange btn-full btn-lg mt" onclick="runMode('multi_video_search')">
+                <i class="fa-solid fa-play"></i> Search Across Videos
+              </button>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ══ Ultimate Search ═══════════════════════════════ -->
+        <section class="page" id="page-ultimate">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title"><i class="fa-solid fa-rocket text-gold"></i> Ultimate Search</h1>
+              <p class="page-subtitle">Mode 5 — The most powerful mode. Multiple people × Multiple videos.</p>
+            </div>
+          </div>
+
+          <div class="ultimate-hero">
+            <div class="uh-badge">ULTIMATE</div>
+            <h2>All People. All Videos. One Click.</h2>
+            <p>Combines Batch Search + Multi-Video Search into a single comprehensive sweep across your entire video library.</p>
+            <div class="uh-stats">
+              <div class="uh-stat"><span id="uhPeopleCount">2</span><label>People</label></div>
+              <div class="uh-stat"><span id="uhVideosCount">3</span><label>Videos</label></div>
+              <div class="uh-stat"><span id="uhCombos">6</span><label>Combinations</label></div>
+            </div>
+          </div>
+
+          <div class="form-layout mt">
+            <div class="form-panel">
+              <h3 class="form-section-title"><i class="fa-solid fa-users"></i> People to Search</h3>
+              <div class="people-list" id="ultimatePeopleList">
+                <div class="person-item">
+                  <div class="person-avatar" id="pav-u1"><i class="fa-solid fa-user"></i></div>
+                  <div class="person-fields">
+                    <input class="field-input" type="text" placeholder="Enter name..." />
+                    <label class="upload-chip">
+                      <input type="file" id="pup-u1" accept="image/*" hidden onchange="handlePersonUpload(this,'pav-u1','pchip-u1')" />
+                      <i class="fa-solid fa-camera"></i>
+                      <span id="pchip-u1">Upload photo</span>
+                    </label>
+                  </div>
+                  <button class="person-remove" onclick="removePerson(this)"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="person-item">
+                  <div class="person-avatar" id="pav-u2"><i class="fa-solid fa-user"></i></div>
+                  <div class="person-fields">
+                    <input class="field-input" type="text" placeholder="Enter name..." />
+                    <label class="upload-chip">
+                      <input type="file" id="pup-u2" accept="image/*" hidden onchange="handlePersonUpload(this,'pav-u2','pchip-u2')" />
+                      <i class="fa-solid fa-camera"></i>
+                      <span id="pchip-u2">Upload photo</span>
+                    </label>
+                  </div>
+                  <button class="person-remove" onclick="removePerson(this)"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+              <button class="btn btn-ghost btn-full" onclick="addPersonTo('ultimatePeopleList')">
+                <i class="fa-solid fa-plus"></i> Add Person
+              </button>
+            </div>
+
+            <div class="form-panel">
+              <h3 class="form-section-title"><i class="fa-solid fa-film"></i> Videos to Search</h3>
+              <div class="video-list" id="ultimateVideoList">
+                <div class="video-item">
+                  <div class="video-icon" id="vav-u1"><i class="fa-solid fa-film"></i></div>
+                  <input class="field-input" type="text" placeholder="video_namespace  (or upload)" id="vns-u1" />
+                  <label class="upload-chip" for="vup-u1" title="Upload to auto-fill name"><i class="fa-solid fa-film"></i><span id="vchip-u1">Upload</span></label>
+                  <input type="file" id="vup-u1" accept="video/*" hidden onchange="handleVideoItemUpload(this,'vav-u1','vchip-u1'); fillNsFromFile(this,'vns-u1'); updateUltimateCombos()" />
+                  <button class="person-remove" onclick="this.parentElement.remove(); updateUltimateCombos()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="video-item">
+                  <div class="video-icon" id="vav-u2"><i class="fa-solid fa-film"></i></div>
+                  <input class="field-input" type="text" placeholder="video_namespace  (or upload)" id="vns-u2" />
+                  <label class="upload-chip" for="vup-u2" title="Upload to auto-fill name"><i class="fa-solid fa-film"></i><span id="vchip-u2">Upload</span></label>
+                  <input type="file" id="vup-u2" accept="video/*" hidden onchange="handleVideoItemUpload(this,'vav-u2','vchip-u2'); fillNsFromFile(this,'vns-u2'); updateUltimateCombos()" />
+                  <button class="person-remove" onclick="this.parentElement.remove(); updateUltimateCombos()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="video-item">
+                  <div class="video-icon" id="vav-u3"><i class="fa-solid fa-film"></i></div>
+                  <input class="field-input" type="text" placeholder="video_namespace  (or upload)" id="vns-u3" />
+                  <label class="upload-chip" for="vup-u3" title="Upload to auto-fill name"><i class="fa-solid fa-film"></i><span id="vchip-u3">Upload</span></label>
+                  <input type="file" id="vup-u3" accept="video/*" hidden onchange="handleVideoItemUpload(this,'vav-u3','vchip-u3'); fillNsFromFile(this,'vns-u3'); updateUltimateCombos()" />
+                  <button class="person-remove" onclick="this.parentElement.remove(); updateUltimateCombos()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+              <button class="btn btn-ghost btn-full" onclick="addVideoTo('ultimateVideoList')">
+                <i class="fa-solid fa-plus"></i> Add Video
+              </button>
+            </div>
+          </div>
+
+          <button class="btn btn-gold btn-full btn-xl mt" onclick="runMode('ultimate_search')">
+            <i class="fa-solid fa-rocket"></i> Launch Ultimate Search
+          </button>
+        </section>
+
+        <!-- ══ Bulk Store ═════════════════════════════════════ -->
+        <section class="page" id="page-bulkstore">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title"><i class="fa-solid fa-layer-group text-pink"></i> Bulk Store</h1>
+              <p class="page-subtitle">Mode 6 — Index multiple videos in a single batch operation.</p>
+            </div>
+          </div>
+
+          <div class="form-layout">
+            <div class="form-panel">
+              <h3 class="form-section-title"><i class="fa-solid fa-film"></i> Videos to Index</h3>
+              <div class="video-list" id="bulkVideoList">
+                <div class="video-item">
+                  <div class="video-icon icon-pink" id="vav-b1"><i class="fa-solid fa-film"></i></div>
+                  <label class="upload-chip" for="vup-b1"><i class="fa-solid fa-film"></i><span id="vchip-b1">Upload Video 1</span></label>
+                  <input type="file" id="vup-b1" accept="video/*" hidden onchange="handleVideoItemUpload(this,'vav-b1','vchip-b1')" />
+                  <button class="person-remove" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="video-item">
+                  <div class="video-icon icon-pink" id="vav-b2"><i class="fa-solid fa-film"></i></div>
+                  <label class="upload-chip" for="vup-b2"><i class="fa-solid fa-film"></i><span id="vchip-b2">Upload Video 2</span></label>
+                  <input type="file" id="vup-b2" accept="video/*" hidden onchange="handleVideoItemUpload(this,'vav-b2','vchip-b2')" />
+                  <button class="person-remove" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+              <button class="btn btn-ghost btn-full" onclick="addVideoTo('bulkVideoList')">
+                <i class="fa-solid fa-plus"></i> Add Video
+              </button>
+
+              <div class="field-group mt">
+                <label class="field-label">Shared Namespace <span class="field-hint">(optional - leave blank for auto per video)</span></label>
+                <div class="field-input-wrap">
+                  <i class="fa-solid fa-tag field-icon"></i>
+                  <input class="field-input" type="text" placeholder="Leave blank for per-video namespaces" />
+                </div>
+              </div>
+
+              <button class="btn btn-pink btn-full btn-lg mt" onclick="runMode('bulk_store')">
+                <i class="fa-solid fa-layer-group"></i> Start Bulk Indexing
+              </button>
+            </div>
+
+            <div class="info-panel">
+              <div class="info-box">
+                <i class="fa-solid fa-lightbulb"></i>
+                <p>After bulk storing, use <strong>Ultimate Search</strong> to find people across all indexed videos instantly.</p>
+              </div>
+              <div class="bulk-summary" id="bulkSummary">
+                <div class="bs-item"><i class="fa-solid fa-film"></i> <span>2 videos queued</span></div>
+                <div class="bs-item"><i class="fa-solid fa-clock"></i> <span>Est. time: depends on video length</span></div>
+                <div class="bs-item"><i class="fa-solid fa-database"></i> <span>Namespaces: auto-generated</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ Results ════════════════════════════════════════ -->
+        <section class="page" id="page-results">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title"><i class="fa-solid fa-chart-bar"></i> Results</h1>
+              <p class="page-subtitle">All search results and processing outputs.</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-ghost" onclick="clearResults()"><i class="fa-solid fa-trash"></i> Clear All</button>
+              <button class="btn btn-primary" onclick="exportResults()"><i class="fa-solid fa-download"></i> Export JSON</button>
+            </div>
+          </div>
+          <div class="results-empty" id="resultsEmpty">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <p>No results yet. Run a search to see matches here.</p>
+          </div>
+          <div id="resultsContainer"></div>
+        </section>
+
+      </div><!-- /pages -->
+    </main>
+  </div><!-- /app-shell -->
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">
+    <i class="fa-solid fa-check-circle toast-icon"></i>
+    <span id="toastMsg">Action completed</span>
+  </div>
+
+  <!-- ══ Demo Modal ══════════════════════════════════════════ -->
+  <div class="modal-overlay hidden" id="demoModal">
+    <div class="demo-modal">
+      <button class="demo-modal-close" onclick="closeDemoModal()"><i class="fa-solid fa-xmark"></i></button>
+
+      <!-- Header -->
+      <div class="demo-header">
+        <div class="demo-scan">
+          <div class="demo-ring dr1"></div>
+          <div class="demo-ring dr2"></div>
+          <div class="demo-ring dr3"></div>
+          <div class="demo-eye-wrap" id="demoEyeWrap">
+            <i class="fa-solid fa-eye demo-eye"></i>
+          </div>
+        </div>
+        <div class="demo-title-block">
+          <span class="demo-title" id="demoHeadline">Hybrid Face Recognition</span>
+          <span class="demo-sub" id="demoSubline">Initializing pipeline...</span>
+        </div>
+      </div>
+
+      <!-- Pipeline Steps -->
+      <div class="demo-steps" id="demoSteps">
+        <div class="demo-step" id="dstep-0">
+          <div class="ds-icon"><i class="fa-solid fa-brain"></i></div>
+          <div class="ds-body"><strong>FaceNet Model</strong><span>InceptionResnetV1 · 512-dim</span></div>
+          <div class="ds-status"><span class="ds-idle">—</span></div>
+        </div>
+        <div class="demo-step" id="dstep-1">
+          <div class="ds-icon"><i class="fa-solid fa-database"></i></div>
+          <div class="ds-body"><strong>Pinecone DB</strong><span>Vector index connection</span></div>
+          <div class="ds-status"><span class="ds-idle">—</span></div>
+        </div>
+        <div class="demo-step" id="dstep-2">
+          <div class="ds-icon"><i class="fa-solid fa-film"></i></div>
+          <div class="ds-body"><strong>Frame Extraction</strong><span>Every 30 frames sampled</span></div>
+          <div class="ds-status"><span class="ds-idle">—</span></div>
+        </div>
+        <div class="demo-step" id="dstep-3">
+          <div class="ds-icon"><i class="fa-solid fa-face-smile"></i></div>
+          <div class="ds-body"><strong>Face Detection</strong><span>RetinaFace · threshold 0.5</span></div>
+          <div class="ds-status"><span class="ds-idle">—</span></div>
+        </div>
+        <div class="demo-step" id="dstep-4">
+          <div class="ds-icon"><i class="fa-solid fa-microchip"></i></div>
+          <div class="ds-body"><strong>Embedding</strong><span>L2-normalized vectors</span></div>
+          <div class="ds-status"><span class="ds-idle">—</span></div>
+        </div>
+        <div class="demo-step" id="dstep-5">
+          <div class="ds-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+          <div class="ds-body"><strong>Vector Upload</strong><span>Pinecone batch upsert</span></div>
+          <div class="ds-status"><span class="ds-idle">—</span></div>
+        </div>
+        <div class="demo-step" id="dstep-6">
+          <div class="ds-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+          <div class="ds-body"><strong>ANN Search</strong><span>Cosine similarity query</span></div>
+          <div class="ds-status"><span class="ds-idle">—</span></div>
+        </div>
+        <div class="demo-step" id="dstep-7">
+          <div class="ds-icon"><i class="fa-solid fa-user-check"></i></div>
+          <div class="ds-body"><strong>Match Found</strong><span>Temporal clustering</span></div>
+          <div class="ds-status"><span class="ds-idle">—</span></div>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="demo-progress-wrap">
+        <div class="demo-progress-fill" id="demoProgressFill" style="width:0%"></div>
+      </div>
+
+      <!-- Result reveal (hidden until done) -->
+      <div class="demo-result hidden" id="demoResult">
+        <div class="dr-found"><i class="fa-solid fa-circle-check"></i> PERSON FOUND</div>
+        <div class="dr-segments">
+          <div class="dr-seg">
+            <div class="dr-seg-num">01</div>
+            <div class="dr-seg-info">
+              <span class="dr-time">12.5s &ndash; 24.1s</span>
+              <span class="dr-dur">11.6s duration</span>
+            </div>
+            <div class="dr-seg-bars">
+              <div class="dr-bar-row"><span>Confidence</span><div class="dr-bar"><div class="dr-bar-fill" style="width:0%" data-w="92"></div></div><b>92.4%</b></div>
+              <div class="dr-bar-row"><span>Similarity</span><div class="dr-bar"><div class="dr-bar-fill dr-bar-purple" style="width:0%" data-w="72"></div></div><b>72%</b></div>
+            </div>
+          </div>
+          <div class="dr-seg">
+            <div class="dr-seg-num">02</div>
+            <div class="dr-seg-info">
+              <span class="dr-time">67.3s &ndash; 78.9s</span>
+              <span class="dr-dur">11.6s duration</span>
+            </div>
+            <div class="dr-seg-bars">
+              <div class="dr-bar-row"><span>Confidence</span><div class="dr-bar"><div class="dr-bar-fill" style="width:0%" data-w="88"></div></div><b>88.1%</b></div>
+              <div class="dr-bar-row"><span>Similarity</span><div class="dr-bar"><div class="dr-bar-fill dr-bar-purple" style="width:0%" data-w="69"></div></div><b>69%</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="dr-meta">
+          <span><i class="fa-solid fa-bolt"></i> 87ms search</span>
+          <span><i class="fa-solid fa-layer-group"></i> 4,820 vectors scanned</span>
+          <span><i class="fa-solid fa-microchip"></i> GPU accelerated</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Run Modal (for actual modes) -->
+  <div class="modal-overlay hidden" id="runModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalTitle">Running Mode</h3>
+        <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="run-animation">
+          <div class="scan-circle">
+            <div class="scan-ring"></div>
+            <div class="scan-ring r2"></div>
+            <div class="scan-ring r3"></div>
+            <i class="fa-solid fa-eye scan-eye"></i>
+          </div>
+        </div>
+        <div class="terminal-output" id="terminalOutput">
+          <div class="term-line term-system">&#9658; Initializing...</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="modal-progress">
+          <div class="modal-progress-fill" id="modalProgressFill" style="width:0%">
+            <span class="modal-progress-pct" id="modalProgressPct">0%</span>
+          </div>
+        </div>
+        <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

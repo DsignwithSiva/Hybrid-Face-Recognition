@@ -64,10 +64,6 @@ def search_for_person_in_stored_faces():
     Search for a specific person in previously stored faces.
     This is INSTANT - no video processing needed!
     """
-    print("\n" + "="*70)
-    print("🔍 MODE: SEARCH FOR PERSON")
-    print("="*70)
-
     try:
         stats = index.describe_index_stats()
         namespace_count = stats.get('namespaces', {}).get(VIDEO_NAMESPACE, {}).get('vector_count', 0)
@@ -77,14 +73,10 @@ def search_for_person_in_stored_faces():
             print(f"   Please run in 'store' mode first to process the video.")
             return
 
-        print(f"\n📊 Database Info:")
-        print(f"   - Namespace: {VIDEO_NAMESPACE}")
-        print(f"   - Stored faces: {namespace_count}")
     except Exception as e:
         print(f"\n❌ ERROR: Could not access namespace: {e}")
         return
 
-    print(f"\n📸 Loading reference image: {IMAGE_PATH}")
     ref_img = cv2.imread(IMAGE_PATH)
     if ref_img is None:
         raise FileNotFoundError(f"Could not load reference image: {IMAGE_PATH}")
@@ -118,10 +110,8 @@ def search_for_person_in_stored_faces():
     with torch.no_grad():
         ref_emb = model(ref_tensor).cpu().numpy()[0]
     ref_emb = l2_normalize(ref_emb)
-    print(f"✅ Reference face encoded")
 
     import time
-    print(f"\n🔍 Searching for matches in database...")
     search_start = time.time()
 
     results = index.query(
@@ -135,7 +125,7 @@ def search_for_person_in_stored_faces():
     print(f"✅ Search completed in {search_time:.2f}s")
 
     cap = cv2.VideoCapture(VIDEO_PATH)
-    fps = cap.get(cv2.CAP_PROP_FPS)
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
     cap.release()
 
     all_matches = []
@@ -162,7 +152,6 @@ def search_for_person_in_stored_faces():
     print(f"   - Matching frames: {len(all_matches)}")
     print(f"   - Appearance segments: {len(clusters)}")
 
-    print("\n" + "="*70)
 
     if len(clusters) > 0:
         print("✅ RESULT: Person IS PRESENT in the video")
@@ -179,10 +168,7 @@ def search_for_person_in_stored_faces():
             print(f"   Segment {i}:")
             print(f"      📍 Time: {start_time_sec:.2f}s - {end_time_sec:.2f}s (duration: {duration_sec:.2f}s)")
             print(f"      🎞️  Frames: {cluster['start_frame']} - {cluster['end_frame']}")
-            print(f"      🎯 Best distance: {cluster['best_distance']:.4f}")
-            print(f"      📊 Avg distance: {cluster['avg_distance']:.4f}")
             print(f"      ⭐ Confidence: {confidence_pct:.1f}%")
-            print(f"      🔢 Detections: {cluster['count']}")
             print(f"      💪 Quality: {match_quality}")
             print()
 
@@ -190,19 +176,12 @@ def search_for_person_in_stored_faces():
         print(f"🏆 Best Match Summary:")
         print(f"   - Timestamp: {best_cluster['start_frame'] / fps:.2f}s")
         print(f"   - Frame: {best_cluster['start_frame']}")
-        print(f"   - Distance: {best_cluster['best_distance']:.4f}")
-        print(f"   - Confidence: {best_cluster['avg_confidence']*100:.1f}%")
-
     else:
         print("❌ RESULT: Person NOT PRESENT in the video")
-        print(f"   (No matches below threshold {DIST_THRESHOLD})")
 
         if all_matches:
             closest = min(all_matches, key=lambda x: x['distance'])
             print(f"\n   💡 Closest match: frame {closest['frame']} (distance {closest['distance']:.4f})")
-
-    print("="*70)
-
 
 # ===============================
 # MODE 3: BATCH SEARCH (Multiple People, One Video)
@@ -213,9 +192,6 @@ def batch_search_multiple_people():
     Search for MULTIPLE people in ONE namespace (could be multiple videos).
     Now supports searching across bulk-stored videos.
     """
-    print("\n" + "="*70)
-    print("👥 MODE: BATCH SEARCH - Multiple People")
-    print("="*70)
 
     try:
         stats = index.describe_index_stats()
@@ -249,8 +225,6 @@ def batch_search_multiple_people():
             print(f"\n❌ ERROR: Namespace '{search_namespace}' is empty!")
             return
 
-        print(f"\n✅ Searching in: {search_namespace} ({namespace_count} faces)")
-
     except Exception as e:
         print(f"\n❌ ERROR: {e}")
         return
@@ -261,9 +235,6 @@ def batch_search_multiple_people():
     failed_images = []
 
     for idx, image_path in enumerate(BATCH_IMAGE_PATHS, 1):
-        print(f"\n{'='*70}")
-        print(f"🔍 [{idx}/{len(BATCH_IMAGE_PATHS)}] Searching: {os.path.basename(image_path)}")
-        print(f"{'='*70}")
 
         if not os.path.exists(image_path):
             error_msg = f"Image file not found: {image_path}"
@@ -325,10 +296,8 @@ def batch_search_multiple_people():
         else:
             print(f"   ❌ NOT FOUND")
 
-    print(f"\n{'='*70}")
+
     print(f"📊 BATCH SEARCH SUMMARY")
-    print(f"{'='*70}")
-    print(f"Namespace: {search_namespace}\n")
 
     found_count = sum(1 for r in all_results.values() if r["status"] == "found")
 
@@ -353,7 +322,6 @@ def batch_search_multiple_people():
         print(f"{'='*70}")
 
     print(f"\n✅ Found: {found_count}/{len(BATCH_IMAGE_PATHS)} people")
-    print(f"{'='*70}")
 
 
 # ===============================
@@ -365,11 +333,6 @@ def multi_video_search_one_person():
     Search for ONE person across MULTIPLE videos.
     Useful for: "Find this actor in all my movies"
     """
-    print("\n" + "="*70)
-    print("🎬 MODE: MULTI-VIDEO SEARCH - One Person Across Videos")
-    print("="*70)
-
-    print(f"\n📸 Loading reference image: {IMAGE_PATH}")
 
     try:
         ref_emb = encode_reference_image(IMAGE_PATH)
@@ -377,14 +340,10 @@ def multi_video_search_one_person():
         print(f"❌ Error loading image: {e}")
         return
 
-    print(f"\n🎬 Searching across {len(VIDEO_PATHS)} videos...")
 
     all_results = {}
 
     for idx, video_path in enumerate(VIDEO_PATHS, 1):
-        print(f"\n{'='*70}")
-        print(f"🔍 [{idx}/{len(VIDEO_PATHS)}] Searching: {video_path}")
-        print(f"{'='*70}")
 
         video_namespace = f"video_{os.path.splitext(os.path.basename(video_path))[0]}"
 
@@ -397,14 +356,13 @@ def multi_video_search_one_person():
                 all_results[video_path] = {"status": "not_stored"}
                 continue
 
-            print(f"   Database: {namespace_count} faces")
         except Exception as e:
             print(f"   ❌ Error: {e}")
             all_results[video_path] = {"status": "error", "message": str(e)}
             continue
 
         cap = cv2.VideoCapture(video_path)
-        fps = cap.get(cv2.CAP_PROP_FPS)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
         cap.release()
 
         results = index.query(
@@ -447,9 +405,9 @@ def multi_video_search_one_person():
         else:
             print(f"   ❌ NOT FOUND")
 
-    print(f"\n{'='*70}")
+
     print(f"📊 MULTI-VIDEO SEARCH SUMMARY")
-    print(f"{'='*70}")
+
     print(f"Person: {IMAGE_PATH}\n")
 
     found_count = sum(1 for r in all_results.values() if r["status"] == "found")
@@ -515,8 +473,6 @@ def ultimate_search():
         person_results = {}
 
         for video_idx, video_path in enumerate(VIDEO_PATHS, 1):
-            print(f"\n  🎬 [{video_idx}/{len(VIDEO_PATHS)}] Searching: {os.path.basename(video_path)}")
-
             video_namespace = f"video_{os.path.splitext(os.path.basename(video_path))[0]}"
 
             try:
@@ -533,7 +489,7 @@ def ultimate_search():
                 continue
 
             cap = cv2.VideoCapture(video_path)
-            fps = cap.get(cv2.CAP_PROP_FPS)
+            fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
             cap.release()
 
             results = index.query(
@@ -570,12 +526,9 @@ def ultimate_search():
 
         master_results[image_path] = person_results
 
-    print(f"\n{'='*70}")
     print(f"🏆 ULTIMATE SEARCH RESULTS")
-    print(f"{'='*70}\n")
 
     print(f"{'Person':<25} | {'Videos Found':<15} | {'Total Segments'}")
-    print(f"{'-'*25}-+-{'-'*15}-+-{'-'*15}")
 
     for image_path, video_results in master_results.items():
         if "error" in video_results:

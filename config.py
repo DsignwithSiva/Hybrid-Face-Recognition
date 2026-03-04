@@ -1,4 +1,7 @@
 import os
+import sys
+import argparse
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TF logs
 import torch
 from dotenv import load_dotenv
 
@@ -11,20 +14,36 @@ load_dotenv()
 # HYBRID MODE SETTINGS
 MODE = "search"  # Options: "store", "search", "batch_search", "multi_video_search", "ultimate_search", "bulk_store"
 
+# ─── CLI overrides (pass --video, --image, --mode etc.) ──────
+# Usage examples:
+#   python main.py --mode store --video path/to/video.mp4
+#   python main.py --mode search --image path/to/photo.jpg
+#   python main.py --mode bulk_store --video vid1.mp4 vid2.mp4
+_parser = argparse.ArgumentParser(add_help=False)
+_parser.add_argument('--mode',    default=None)
+_parser.add_argument('--video',   default=None, nargs='+')
+_parser.add_argument('--image',   default=None, nargs='+')
+_parser.add_argument('--ns',      default=None,  help='Override namespace')
+_args, _ = _parser.parse_known_args()
+
+# Apply CLI mode override
+if _args.mode:
+    MODE = _args.mode
+
 # For STORE mode - single video
-VIDEO_PATH = "peop.mp4"
+VIDEO_PATH = (_args.video[0] if _args.video else None) or "peop.mp4"
 
 # For SEARCH mode - single person in single video
-IMAGE_PATH = "new.jpg"
+IMAGE_PATH = (_args.image[0] if _args.image else None) or "new.jpg"
 
 # For BATCH_SEARCH mode - multiple people in ONE video
-BATCH_IMAGE_PATHS = [
+BATCH_IMAGE_PATHS = _args.image if (_args.image and len(_args.image) > 1) else [
     "pra.jpg",
     "satya.jpg"
 ]
 
 # For MULTI_VIDEO_SEARCH mode - one person across MULTIPLE videos
-VIDEO_PATHS = [
+VIDEO_PATHS = _args.video if (_args.video and len(_args.video) > 1) else [
     "bahu_480.mp4",
     "120_fps.mp4",
     "bhaai.mp4"
