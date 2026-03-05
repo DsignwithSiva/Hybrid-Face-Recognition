@@ -6,6 +6,14 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
+# Fix broken TensorFlow __version__ on Windows
+try:
+    import tensorflow as _tf
+    if not hasattr(_tf, '__version__'):
+        _tf.__version__ = '2.15.0'
+except Exception:
+    pass
+
 from config import MODE, VIDEO_NAMESPACE, VIDEO_PATH, IMAGE_PATH
 
 print(f"   - Mode: {MODE.upper()}")

@@ -3,6 +3,14 @@ import cv2
 import torch
 import numpy as np
 
+# Fix broken TensorFlow __version__ on Windows
+try:
+    import tensorflow as _tf
+    if not hasattr(_tf, '__version__'):
+        _tf.__version__ = '2.15.0'
+except Exception:
+    pass
+
 from retinaface import RetinaFace
 
 from config import (
@@ -12,6 +20,9 @@ from config import (
 )
 from utils import l2_normalize, TemporalClusterer
 from models import model, index
+
+# Original filenames for batch search (set by server before calling batch_search_multiple_people)
+BATCH_IMAGE_NAMES: list = []
 
 
 # ===============================
@@ -205,28 +216,40 @@ def batch_search_multiple_people():
             print(f"   Run 'bulk_store' mode first to process videos.")
             return
 
-        print(f"\nAvailable namespaces:")
         ns_list = list(namespaces.keys())
-        for idx, ns_name in enumerate(ns_list, 1):
-            count = namespaces[ns_name].get('vector_count', 0)
-            print(f"   {idx}. {ns_name} ({count} faces)")
 
-        selection = input(f"\nSelect namespace (1-{len(ns_list)}) or press Enter for bulk: ").strip()
-
-        if selection == "":
-            search_namespace = "bulk_videos_combined"
-        else:
-            try:
-                search_namespace = ns_list[int(selection) - 1]
-            except Exception:
-                print("Invalid selection")
+        # When called from the server VIDEO_NAMESPACE is pre-set — skip the prompt.
+        if VIDEO_NAMESPACE:
+            search_namespace   = VIDEO_NAMESPACE
+            namespace_count    = namespaces.get(search_namespace, {}).get('vector_count', 0)
+            if namespace_count == 0:
+                print(f"\n❌ ERROR: Namespace '{search_namespace}' not found or is empty!")
+                print(f"   Available namespaces: {', '.join(ns_list)}")
                 return
+            print(f"\n📁 Namespace  : {search_namespace} ({namespace_count} faces indexed)")
+        else:
+            # Interactive CLI fallback
+            print(f"\nAvailable namespaces:")
+            for idx, ns_name in enumerate(ns_list, 1):
+                count = namespaces[ns_name].get('vector_count', 0)
+                print(f"   {idx}. {ns_name} ({count} faces)")
 
-        namespace_count = namespaces.get(search_namespace, {}).get('vector_count', 0)
+            selection = input(f"\nSelect namespace (1-{len(ns_list)}) or press Enter for bulk: ").strip()
 
-        if namespace_count == 0:
-            print(f"\n❌ ERROR: Namespace '{search_namespace}' is empty!")
-            return
+            if selection == "":
+                search_namespace = "bulk_videos_combined"
+            else:
+                try:
+                    search_namespace = ns_list[int(selection) - 1]
+                except Exception:
+                    print("Invalid selection")
+                    return
+
+            namespace_count = namespaces.get(search_namespace, {}).get('vector_count', 0)
+
+            if namespace_count == 0:
+                print(f"\n❌ ERROR: Namespace '{search_namespace}' is empty!")
+                return
 
     except Exception as e:
         print(f"\n❌ ERROR: {e}")
@@ -238,21 +261,33 @@ def batch_search_multiple_people():
     failed_images = []
 
     for idx, image_path in enumerate(BATCH_IMAGE_PATHS, 1):
+        # Use original upload name when available; fall back to temp basename
+        display_name = (
+            BATCH_IMAGE_NAMES[idx - 1]
+            if BATCH_IMAGE_NAMES and idx - 1 < len(BATCH_IMAGE_NAMES)
+            else os.path.basename(image_path)
+        )
+
+        print(f"\n{'─'*55}")
+        print(f"[{idx}/{len(BATCH_IMAGE_PATHS)}] 👤 Person: {display_name}")
+        print(f"{'─'*55}")
 
         if not os.path.exists(image_path):
             error_msg = f"Image file not found: {image_path}"
             print(f"   ❌ ERROR: {error_msg}")
-            failed_images.append({"image": image_path, "error": error_msg})
-            all_results[image_path] = {"status": "error", "error": error_msg}
+            failed_images.append({"image": image_path, "error": error_msg, "name": display_name})
+            all_results[image_path] = {"status": "error", "error": error_msg, "name": display_name}
             continue
 
+        print(f"   🖼️  Encoding face from image...")
         try:
             ref_emb = encode_reference_image(image_path)
+            print(f"   ✔  Face encoded successfully")
         except Exception as e:
             error_msg = f"Could not detect face in image: {str(e)}"
             print(f"   ❌ ERROR: {error_msg}")
-            failed_images.append({"image": image_path, "error": error_msg})
-            all_results[image_path] = {"status": "error", "error": error_msg}
+            failed_images.append({"image": image_path, "error": error_msg, "name": display_name})
+            all_results[image_path] = {"status": "error", "error": error_msg, "name": display_name}
             continue
 
         try:
@@ -265,15 +300,17 @@ def batch_search_multiple_people():
         except Exception as e:
             error_msg = f"Search failed: {str(e)}"
             print(f"   ❌ ERROR: {error_msg}")
-            failed_images.append({"image": image_path, "error": error_msg})
-            all_results[image_path] = {"status": "error", "error": error_msg}
+            failed_images.append({"image": image_path, "error": error_msg, "name": display_name})
+            all_results[image_path] = {"status": "error", "error": error_msg, "name": display_name}
             continue
 
         matches = []
+        all_distances = []
         clusterer = TemporalClusterer(frame_threshold=TEMPORAL_CLUSTER_THRESHOLD)
 
         for match in results['matches']:
             distance = 1 - match['score']
+            all_distances.append(distance)
             if distance < DIST_THRESHOLD:
                 confidence = match['metadata'].get('quality_confidence', 0.5)
                 frame_num = match['metadata']['frame']
@@ -289,42 +326,54 @@ def batch_search_multiple_people():
         all_results[image_path] = {
             "status": "found" if len(clusters) > 0 else "not_found",
             "matches": len(matches),
-            "segments": clusters
+            "segments": clusters,
+            "name": display_name
         }
 
         if len(clusters) > 0:
-            print(f"   ✅ FOUND - {len(clusters)} segment(s), {len(matches)} frames")
+            best_dist = min(m['distance'] for m in matches)
             videos_found = set(m['video'] for m in matches)
-            print(f"      Videos: {', '.join(videos_found)}")
+            print(f"   ✅ RESULT  : FOUND in video")
+            print(f"   📊 Matches : {len(matches)} frame(s) across {len(clusters)} segment(s)")
+            print(f"   🎬 Video(s) : {', '.join(videos_found)}")
+            for seg_i, seg in enumerate(clusters, 1):
+                fps_est = 25.0
+                t_start = seg['start_frame'] / fps_est
+                t_end   = seg['end_frame']   / fps_est
+                print(f"      Segment {seg_i}: frames {seg['start_frame']}–{seg['end_frame']}  ({t_start:.1f}s – {t_end:.1f}s)")
         else:
-            print(f"   ❌ NOT FOUND")
+            closest_dist = min(all_distances) if all_distances else None
+            print(f"   ❌ RESULT  : NOT FOUND in video")
+            if closest_dist is not None:
+                print(f"   💡 Closest match distance: {closest_dist:.4f}  (threshold: {DIST_THRESHOLD})")
+                if closest_dist < DIST_THRESHOLD + 0.10:
+                    print(f"   ⚠️  Very close! Try lowering threshold below {closest_dist:.2f} to include this match.")
+            else:
+                print(f"   ℹ️  No candidates returned from vector DB.")
 
-
-    print(f"📊 BATCH SEARCH SUMMARY")
 
     found_count = sum(1 for r in all_results.values() if r["status"] == "found")
 
-    for image_path, result in all_results.items():
-        status_icon = "✅" if result["status"] == "found" else "❌"
-        print(f"{status_icon} {os.path.basename(image_path)}")
+    print(f"\n{'═'*55}")
+    print(f"📊 BATCH SEARCH SUMMARY  ({found_count}/{len(BATCH_IMAGE_PATHS)} people found)")
+    print(f"{'═'*55}")
 
+    for i, (image_path, result) in enumerate(all_results.items(), 1):
+        name = result.get("name") or os.path.basename(image_path)
         if result["status"] == "found":
-            print(f"   └─ {result['matches']} matches in {len(result['segments'])} segments")
+            print(f"  {i}. ✅ FOUND    — {name}")
+            print(f"        {result['matches']} frame match(es) in {len(result['segments'])} segment(s)")
         elif result["status"] == "not_found":
-            print(f"   └─ No matches found")
+            print(f"  {i}. ❌ NOT FOUND — {name}")
         else:
-            print(f"   └─ Error: {result.get('error', 'Unknown')}")
+            print(f"  {i}. ⚠️  ERROR     — {name}")
+            print(f"        {result.get('error', 'Unknown error')}")
 
     if failed_images:
-        print(f"\n{'='*70}")
-        print(f"❌ FAILED IMAGES ({len(failed_images)}):")
-        print(f"{'='*70}")
-        for idx, failure in enumerate(failed_images, 1):
-            print(f"{idx}. {os.path.basename(failure['image'])}")
-            print(f"   Error: {failure['error']}")
-        print(f"{'='*70}")
+        print(f"\n  ⚠️  {len(failed_images)} image(s) could not be processed (see errors above)")
 
-    print(f"\n✅ Found: {found_count}/{len(BATCH_IMAGE_PATHS)} people")
+    print(f"{'═'*55}")
+    print(f"\n✅ Final Result: {found_count}/{len(BATCH_IMAGE_PATHS)} people found in '{search_namespace}'")
 
 
 # ===============================
@@ -370,8 +419,10 @@ def multi_video_search_one_person():
             continue
 
         cap = cv2.VideoCapture(video_path)
-        fps = cap.get(cv2.CAP_PROP_FPS)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
         cap.release()
+        if fps == 0:
+            fps = 25.0
 
         results = index.query(
             vector=ref_emb.tolist(),
@@ -502,8 +553,10 @@ def ultimate_search():
                 continue
 
             cap = cv2.VideoCapture(video_path)
-            fps = cap.get(cv2.CAP_PROP_FPS)
+            fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
             cap.release()
+            if fps == 0:
+                fps = 25.0
 
             results = index.query(
                 vector=ref_emb.tolist(),
@@ -541,8 +594,6 @@ def ultimate_search():
 
     print(f"🏆 ULTIMATE SEARCH RESULTS")
 
-    print(f"{'Person':<25} | {'Videos Found':<15} | {'Total Segments'}")
-
     for image_path, video_results in master_results.items():
         if "error" in video_results:
             print(f"{os.path.basename(image_path):<25} | {'ERROR':<15} | -")
@@ -550,8 +601,6 @@ def ultimate_search():
 
         found_in = sum(1 for r in video_results.values() if r.get("status") == "found")
         total_segments = sum(len(r.get("segments", [])) for r in video_results.values())
-
-        print(f"{os.path.basename(image_path):<25} | {found_in}/{len(VIDEO_PATHS):<14} | {total_segments}")
 
     print(f"\n{'='*70}")
     print(f"📋 DETAILED RESULTS")

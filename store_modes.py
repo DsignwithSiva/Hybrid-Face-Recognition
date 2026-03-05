@@ -3,6 +3,14 @@ import cv2
 import uuid
 import time
 
+# Fix broken TensorFlow __version__ on Windows
+try:
+    import tensorflow as _tf
+    if not hasattr(_tf, '__version__'):
+        _tf.__version__ = '2.15.0'
+except Exception:
+    pass
+
 from retinaface import RetinaFace
 
 from config import (

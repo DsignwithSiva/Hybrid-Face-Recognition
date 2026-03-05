@@ -429,6 +429,11 @@ function setProgress(pct) {
   if (pctEl) pctEl.textContent = `${Math.round(pct)}%`;
 }
 
+function captureTerminalOutput() {
+  const out = document.getElementById('terminalOutput');
+  return out ? out.innerText : '';
+}
+
 // ─── SSE Stream Consumer ────────────────────────────────────
 /**
  * Open a Server-Sent Events stream for the given job_id.
@@ -575,7 +580,10 @@ async function runStoreReal() {
   fd.append('conflict',      conflict);
 
   const result = await _startJob('/api/store', fd, `Store → ${ns}`);
-  if (result) showToast(`✅ Faces stored in namespace '${ns}'`, 'success');
+  if (result) {
+    showToast(`✅ Faces stored in namespace '${ns}'`, 'success');
+    storeResult({ type: 'store', ns, video: tf.name, timestamp: Date.now(), terminal: captureTerminalOutput() });
+  }
 }
 
 // ══ Search ═══════════════════════════════════════════════════
@@ -603,7 +611,7 @@ async function runSearchReal() {
     state.searchCount++;
     document.getElementById('stat-searches').textContent = state.searchCount;
     showToast('Search complete', 'success');
-    storeResult({ type: 'search', img: tf.name, ns, raw: result });
+    storeResult({ type: 'search', img: tf.name, ns, timestamp: Date.now(), terminal: captureTerminalOutput() });
   }
 }
 
@@ -641,6 +649,7 @@ async function runBatchReal() {
     showToast(`Batch search done — ${uploads.length} people`, 'success');
     state.searchCount++;
     document.getElementById('stat-searches').textContent = state.searchCount;
+    storeResult({ type: 'batch_search', people: uploads.length, ns, timestamp: Date.now(), terminal: captureTerminalOutput() });
   }
 }
 
@@ -681,6 +690,7 @@ async function runMultiVideoReal() {
     showToast(`Searched ${videoNames.length} video(s)`, 'success');
     state.searchCount++;
     document.getElementById('stat-searches').textContent = state.searchCount;
+    storeResult({ type: 'multi_video', img: tf.name, videos: videoNames.length, timestamp: Date.now(), terminal: captureTerminalOutput() });
   }
 }
 
@@ -735,6 +745,7 @@ async function runUltimateReal() {
     showToast(`Ultimate done — ${combos} combinations`, 'success');
     state.searchCount++;
     document.getElementById('stat-searches').textContent = state.searchCount;
+    storeResult({ type: 'ultimate_search', people: uploads.length, videos: videoNames.length, timestamp: Date.now(), terminal: captureTerminalOutput() });
   }
 }
 
@@ -763,7 +774,8 @@ async function runBulkStoreReal() {
 
 
 
-// ─── (legacy simulation code wrapped – not called) ────────────
+// ─── (legacy simulation code – disabled, not called) ───────────
+/* removed auto-executing IIFEs that were firing toasts on page load
 (async () => {
   const tf = tempFiles['video_store'];
   const ns = document.getElementById('storeNamespace')?.value || 'video_peop';
@@ -817,7 +829,7 @@ async function runBulkStoreReal() {
   document.getElementById('stat-stored').textContent = state.storedFaces.toLocaleString();
   showToast(`✅ Stored ${storedFaces} faces from ${videoName}`, 'success');
   addLogEntry(`Stored ${storedFaces} faces from ${videoName} → ${ns}`, 'success');
-})().catch(() => {}); // silent – old simulation code
+}); // end disabled store simulation
 
 
 (async () => { // legacy simulation (not called, kept for reference)
@@ -886,7 +898,8 @@ async function runBulkStoreReal() {
   document.getElementById('stat-searches').textContent = state.searchCount;
   showToast(`Found ${numClusters} appearance segment(s)`, 'success');
   addLogEntry(`Search: ${imgPath} in '${ns}' → ${numClusters} segment(s)`, 'success');
-})().catch(()=>{}); // silent legacy
+}); // end disabled search simulation
+*/
 
 function showSearchResults(clusters, imgPath, ns, ms) {
   const section = document.getElementById('searchResults');
@@ -1162,6 +1175,27 @@ function storeResult(result) {
   renderResultsPage();
 }
 
+const _TYPE_META = {
+  search:         { label: '🔍 Search',        color: 'var(--cyan)'   },
+  batch_search:   { label: '👥 Batch Search',   color: 'var(--purple)' },
+  multi_video:    { label: '🎬 Multi-Video',    color: 'var(--green)'  },
+  ultimate_search:{ label: '🚀 Ultimate',       color: 'var(--orange)' },
+  store:          { label: '📦 Store',          color: '#60a5fa'       },
+};
+
+function _resultSummary(r) {
+  if (r.type === 'search')          return `${r.img || ''}  →  namespace: ${r.ns || ''}`;
+  if (r.type === 'batch_search')    return `${r.people || '?'} people  →  namespace: ${r.ns || ''}`;
+  if (r.type === 'multi_video')     return `${r.img || ''}  →  ${r.videos || '?'} video(s)`;
+  if (r.type === 'ultimate_search') return `${r.people || '?'} people × ${r.videos || '?'} videos`;
+  if (r.type === 'store')           return `${r.video || ''}  →  namespace: ${r.ns || ''}`;
+  return '';
+}
+
+function _escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 function renderResultsPage() {
   const empty = document.getElementById('resultsEmpty');
   const container = document.getElementById('resultsContainer');
@@ -1175,31 +1209,60 @@ function renderResultsPage() {
   if (empty) empty.style.display = 'none';
 
   container.innerHTML = state.results.map((r, idx) => {
-    if (r.type === 'search') {
-      const segs = r.clusters.map((c, i) => `
-        <div class="segment-item">
-          <div class="seg-field"><label>Segment</label><span>#${i + 1}</span></div>
-          <div class="seg-field"><label>Start</label><span>${c.startSec}s</span></div>
-          <div class="seg-field"><label>End</label><span>${c.endSec}s</span></div>
-          <div class="seg-field"><label>Dist</label><span>${c.dist}</span></div>
-          <div class="seg-field"><label>Conf</label><span>${(c.conf * 100).toFixed(1)}%</span></div>
-        </div>
-      `).join('');
-      return `
-        <div class="result-card">
-          <div class="result-card-header">
+    const meta    = _TYPE_META[r.type] || { label: r.type, color: 'var(--cyan)' };
+    const summary = _resultSummary(r);
+    const ts      = r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : '';
+    const termTxt = _escHtml(r.terminal || '(no output captured)');
+    return `
+      <div class="result-card" id="rc-${idx}">
+        <div class="result-card-header">
+          <div style="display:flex;flex-direction:column;gap:3px">
             <div>
-              <strong style="color:var(--text-primary)">${r.img}</strong>
-              <span style="color:var(--text-muted);font-size:12px;margin-left:8px">→ ${r.ns}</span>
+              <strong style="color:${meta.color}">${meta.label}</strong>
+              ${ts ? `<span style="color:var(--text-muted);font-size:11px;margin-left:10px">${ts}</span>` : ''}
             </div>
-            <span class="result-badge-found"><i class="fa-solid fa-check"></i> ${r.clusters.length} segment(s) · ${r.ms}ms</span>
+            ${summary ? `<span style="color:var(--text-secondary);font-size:12px">${_escHtml(summary)}</span>` : ''}
           </div>
-          <div class="segment-list">${segs}</div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            <button onclick="downloadResult(${idx})" title="Download as .txt"
+              style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);color:var(--cyan);padding:5px 11px;border-radius:7px;cursor:pointer;font-size:12px">
+              <i class="fa-solid fa-download"></i> Download
+            </button>
+            <button onclick="removeResult(${idx})" title="Remove this result"
+              style="background:rgba(255,60,60,0.1);border:1px solid rgba(255,60,60,0.3);color:#f87171;padding:5px 9px;border-radius:7px;cursor:pointer;font-size:12px">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
         </div>
-      `;
-    }
-    return `<div class="result-card"><span style="color:var(--text-muted)">${JSON.stringify(r)}</span></div>`;
+        <pre style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px;font-size:11.5px;line-height:1.6;color:var(--text-secondary);max-height:240px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;margin-top:10px;font-family:'Courier New',monospace">${termTxt}</pre>
+      </div>`;
   }).join('');
+}
+
+function downloadResult(idx) {
+  const r = state.results[idx];
+  if (!r) return;
+  const meta  = _TYPE_META[r.type] || { label: r.type };
+  const label = meta.label.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  const ts    = r.timestamp ? new Date(r.timestamp).toISOString().replace(/[:.]/g, '-').slice(0, 19) : Date.now();
+  const header = [
+    'HYBRID FACE RECOGNITION — ' + meta.label.toUpperCase() + ' RESULT',
+    'Time    : ' + (r.timestamp ? new Date(r.timestamp).toLocaleString() : 'unknown'),
+    'Summary : ' + _resultSummary(r),
+    '='.repeat(60),
+    '',
+  ].join('\n');
+  const blob = new Blob([header + (r.terminal || '(no output)')], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `hfr_${label}_${ts}.txt`;
+  a.click();
+  showToast('Downloaded as .txt', 'success');
+}
+
+function removeResult(idx) {
+  state.results.splice(idx, 1);
+  renderResultsPage();
 }
 
 function clearResults() {
@@ -1209,13 +1272,25 @@ function clearResults() {
 }
 
 function exportResults() {
-  const json = JSON.stringify(state.results, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
+  // Build a single combined text file of all results
+  const allText = state.results.map((r, i) => {
+    const meta = _TYPE_META[r.type] || { label: r.type };
+    return [
+      `${'='.repeat(60)}`,
+      `Result #${i + 1} — ${meta.label}`,
+      `Time    : ${r.timestamp ? new Date(r.timestamp).toLocaleString() : 'unknown'}`,
+      `Summary : ${_resultSummary(r)}`,
+      `${'='.repeat(60)}`,
+      r.terminal || '(no output)',
+      '',
+    ].join('\n');
+  }).join('\n');
+  const blob = new Blob([allText], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `hybridfr_results_${Date.now()}.json`;
+  a.download = `hfr_all_results_${Date.now()}.txt`;
   a.click();
-  showToast('Results exported as JSON', 'success');
+  showToast(`Exported ${state.results.length} result(s) as .txt`, 'success');
 }
 
 // ─── Password Toggle ─────────────────────────────────────────
@@ -1225,6 +1300,11 @@ function togglePassword(inputId, btn) {
   const isPass = input.type === 'password';
   input.type = isPass ? 'text' : 'password';
   btn.innerHTML = isPass ? '<i class="fa-solid fa-eye-slash"></i>' : '<i class="fa-solid fa-eye"></i>';
+}
+
+// ─── Activity Log ──────────────────────────────────────────────
+function addLogEntry(msg, type = 'info') {
+  console.log(`[${type.toUpperCase()}] ${msg}`);
 }
 
 // ─── Init ────────────────────────────────────────────────────

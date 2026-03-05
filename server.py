@@ -23,6 +23,14 @@ warnings.filterwarnings("ignore")
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
+# ─── TensorFlow __version__ shim (fixes broken TF installs on Windows) ──────
+try:
+    import tensorflow as _tf
+    if not hasattr(_tf, '__version__'):
+        _tf.__version__ = '2.15.0'
+except Exception:
+    pass
+
 from typing import Optional, List
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -335,24 +343,19 @@ async def api_search(
 # ═══════════════════════════════════════════════════════════
 # MODE 3 — BATCH SEARCH (Multiple people, one namespace)
 # ═══════════════════════════════════════════════════════════
-def _bg_batch_search(jid: str, image_paths: List[str], namespace: str,
-                     threshold: float, top_k: int, cluster: int):
+def _bg_batch_search(jid: str, image_paths: List[str], orig_names: List[str],
+                     namespace: str, threshold: float, top_k: int, cluster: int):
     try:
-        # Determine correct auto-input response for namespace selection prompt
-        _ensure_models()
-        try:
-            ns_list = list(_model_module.index.describe_index_stats().get("namespaces", {}).keys())
-            auto_resp = str(ns_list.index(namespace) + 1) if namespace in ns_list else ""
-        except Exception:
-            auto_resp = ""
-
-        with _capture(jid), _auto_input(auto_resp):
-            _emit(jid, "log", text="🔧 Models ready, starting batch search...")
+        with _capture(jid), _auto_input(""):
+            _emit(jid, "log", text="🔧 Loading models (first run may take ~30s)...")
+            _ensure_models()
             sm = _search_modes
 
-            sm.BATCH_IMAGE_PATHS = image_paths
-            sm.DIST_THRESHOLD = float(threshold)
-            sm.TOP_K_RESULTS = int(top_k)
+            sm.BATCH_IMAGE_PATHS          = image_paths
+            sm.BATCH_IMAGE_NAMES          = orig_names
+            sm.VIDEO_NAMESPACE            = namespace
+            sm.DIST_THRESHOLD             = float(threshold)
+            sm.TOP_K_RESULTS              = int(top_k)
             sm.TEMPORAL_CLUSTER_THRESHOLD = int(cluster)
 
             sm.batch_search_multiple_people()
@@ -379,11 +382,13 @@ async def api_batch_search(
     _proc_lock.acquire()
     jid = _new_job()
     tmp_paths = []
+    orig_names = []
     for img in images:
         ext = os.path.splitext(img.filename or "i")[-1] or ".jpg"
         tmp_paths.append(_save_upload(img, ext))
+        orig_names.append(img.filename or f"image_{len(orig_names)+1}{ext}")
     background_tasks.add_task(
-        _bg_batch_search, jid, tmp_paths, namespace, threshold, top_k, cluster
+        _bg_batch_search, jid, tmp_paths, orig_names, namespace, threshold, top_k, cluster
     )
     return JSONResponse({"job_id": jid})
 

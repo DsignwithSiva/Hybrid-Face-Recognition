@@ -12,7 +12,7 @@ load_dotenv()
 # -------------------------------
 
 # HYBRID MODE SETTINGS
-MODE = "search"  # Options: "store", "search", "batch_search", "multi_video_search", "ultimate_search", "bulk_store"
+MODE = "store"  # Options: "store", "search", "batch_search", "multi_video_search", "ultimate_search", "bulk_store"
 
 # ─── CLI overrides (pass --video, --image, --mode etc.) ──────
 # Usage examples:
