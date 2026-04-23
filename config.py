@@ -12,7 +12,7 @@ load_dotenv()
 # -------------------------------
 
 # HYBRID MODE SETTINGS
-MODE = "store"  # Options: "store", "search", "batch_search", "multi_video_search", "ultimate_search", "bulk_store"
+MODE = "search"  # Options: "store", "search", "batch_search", "multi_video_search", "ultimate_search", "bulk_store"
 
 # ─── CLI overrides (pass --video, --image, --mode etc.) ──────
 # Usage examples:
@@ -31,14 +31,14 @@ if _args.mode:
     MODE = _args.mode
 
 # For STORE mode - single video
-VIDEO_PATH = "bahu_480.mp4"
+VIDEO_PATH = "test_video.mp4"
 
 # For SEARCH mode - single person in single video
-IMAGE_PATH = "pra.jpg"
+IMAGE_PATH = "nani.jpg"
 
 # For BATCH_SEARCH mode - multiple people in ONE video
 BATCH_IMAGE_PATHS = _args.image if (_args.image and len(_args.image) > 1) else [
-    "pra.jpg",
+    "prabhas.jpg",
     "satya.jpg"
 ]
 
