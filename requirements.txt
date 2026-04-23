@@ -1,5 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 python-dotenv
 python-multipart
 
@@ -10,7 +10,6 @@ Pillow
 torch
 torchvision
 facenet-pytorch
-retinaface-pytorch
 
-pinecone-client
+pinecone
 jinja2

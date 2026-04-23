@@ -9,7 +9,6 @@ from config import (
     USE_SIMPLE_TRACKING
 )
 
-
 # -------------------------------
 # UTILITY FUNCTIONS
 # -------------------------------
@@ -30,36 +29,40 @@ def check_face_quality(face_img: np.ndarray) -> Tuple[bool, dict, float]:
     if not ENABLE_QUALITY_CHECKS:
         return True, {'blur': 100.0, 'brightness': 128.0, 'confidence': 1.0}, 1.0
 
-    small_face = cv2.resize(face_img, (80, 80))
-    gray = cv2.cvtColor(small_face, cv2.COLOR_RGB2GRAY) if len(small_face.shape) == 3 else small_face
+    try:
+        small_face = cv2.resize(face_img, (80, 80))
+        gray = cv2.cvtColor(small_face, cv2.COLOR_RGB2GRAY)
 
-    blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
-    brightness = np.mean(gray)
-    confidence = 0.8
+        blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
+        brightness = np.mean(gray)
 
-    quality_ok = (
-        blur_score >= BLUR_THRESHOLD and
-        BRIGHTNESS_MIN <= brightness <= BRIGHTNESS_MAX
-    )
+        confidence = 0.8
 
-    metrics = {
-        'blur': blur_score,
-        'brightness': brightness,
-        'confidence': confidence
-    }
+        quality_ok = (
+            blur_score >= BLUR_THRESHOLD and
+            BRIGHTNESS_MIN <= brightness <= BRIGHTNESS_MAX
+        )
 
-    return quality_ok, metrics, confidence
+        metrics = {
+            'blur': float(blur_score),
+            'brightness': float(brightness),
+            'confidence': float(confidence)
+        }
+
+        return quality_ok, metrics, confidence
+
+    except Exception:
+        return False, {}, 0.0
 
 
 # -------------------------------
-# CLASSES
+# TRACKING
 # -------------------------------
 
 class FaceTracker:
     def __init__(self, frame_window=30):
         self.frame_window = frame_window
         self.last_detection_frame = {}
-        self.unique_faces = 0
 
     def is_duplicate(self, current_frame: int, box: tuple) -> bool:
         if not USE_SIMPLE_TRACKING:
@@ -68,6 +71,7 @@ class FaceTracker:
         x1, y1, x2, y2 = box
         center_x = (x1 + x2) // 2
         center_y = (y1 + y2) // 2
+
         grid_key = (center_x // 100, center_y // 100)
 
         if grid_key in self.last_detection_frame:
@@ -84,8 +88,11 @@ class FaceTracker:
         grid_key = (center_x // 100, center_y // 100)
 
         self.last_detection_frame[grid_key] = frame
-        self.unique_faces += 1
 
+
+# -------------------------------
+# TEMPORAL CLUSTERING
+# -------------------------------
 
 class TemporalClusterer:
     def __init__(self, frame_threshold=30):
@@ -99,54 +106,52 @@ class TemporalClusterer:
         if not self.detections:
             return []
 
-        sorted_detections = sorted(self.detections, key=lambda x: x[0])
+        detections = sorted(self.detections, key=lambda x: x[0])
 
         clusters = []
-        current_cluster = {
-            'start_frame': sorted_detections[0][0],
-            'end_frame': sorted_detections[0][0],
-            'distances': [sorted_detections[0][1]],
-            'confidences': [sorted_detections[0][2]],
-            'frames': [sorted_detections[0][0]]
+        current = {
+            'start_frame': detections[0][0],
+            'end_frame': detections[0][0],
+            'distances': [detections[0][1]],
+            'confidences': [detections[0][2]],
+            'frames': [detections[0][0]]
         }
 
-        for frame, distance, confidence in sorted_detections[1:]:
-            if frame - current_cluster['end_frame'] <= self.frame_threshold:
-                current_cluster['end_frame'] = frame
-                current_cluster['distances'].append(distance)
-                current_cluster['confidences'].append(confidence)
-                current_cluster['frames'].append(frame)
+        for frame, dist, conf in detections[1:]:
+            if frame - current['end_frame'] <= self.frame_threshold:
+                current['end_frame'] = frame
+                current['distances'].append(dist)
+                current['confidences'].append(conf)
+                current['frames'].append(frame)
             else:
-                clusters.append({
-                    'start_frame': current_cluster['start_frame'],
-                    'end_frame': current_cluster['end_frame'],
-                    'avg_distance': np.mean(current_cluster['distances']),
-                    'best_distance': np.min(current_cluster['distances']),
-                    'avg_confidence': np.mean(current_cluster['confidences']),
-                    'count': len(current_cluster['frames']),
-                    'frames': current_cluster['frames']
-                })
-
-                current_cluster = {
+                clusters.append(_finalize_cluster(current))
+                current = {
                     'start_frame': frame,
                     'end_frame': frame,
-                    'distances': [distance],
-                    'confidences': [confidence],
+                    'distances': [dist],
+                    'confidences': [conf],
                     'frames': [frame]
                 }
 
-        clusters.append({
-            'start_frame': current_cluster['start_frame'],
-            'end_frame': current_cluster['end_frame'],
-            'avg_distance': np.mean(current_cluster['distances']),
-            'best_distance': np.min(current_cluster['distances']),
-            'avg_confidence': np.mean(current_cluster['confidences']),
-            'count': len(current_cluster['frames']),
-            'frames': current_cluster['frames']
-        })
-
+        clusters.append(_finalize_cluster(current))
         return clusters
 
+
+def _finalize_cluster(cluster):
+    return {
+        'start_frame': cluster['start_frame'],
+        'end_frame': cluster['end_frame'],
+        'avg_distance': float(np.mean(cluster['distances'])),
+        'best_distance': float(np.min(cluster['distances'])),
+        'avg_confidence': float(np.mean(cluster['confidences'])),
+        'count': len(cluster['frames']),
+        'frames': cluster['frames']
+    }
+
+
+# -------------------------------
+# BATCH ENCODER
+# -------------------------------
 
 class BatchFaceEncoder:
     def __init__(self, model, device, batch_size=16):
@@ -164,10 +169,13 @@ class BatchFaceEncoder:
         if not force and len(self.pending_faces) < self.batch_size:
             return []
 
-        if len(self.pending_faces) == 0:
+        if not self.pending_faces:
             return []
 
-        face_batch = np.stack([cv2.resize(f, (160, 160)) for f in self.pending_faces])
+        face_batch = np.stack([
+            cv2.resize(f, (160, 160)) for f in self.pending_faces
+        ])
+
         face_tensor = torch.tensor(face_batch).permute(0, 3, 1, 2).float() / 255.0
         face_tensor = face_tensor.to(self.device)
 
