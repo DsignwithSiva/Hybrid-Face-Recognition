@@ -10,8 +10,7 @@ Pillow
 torch
 torchvision
 facenet-pytorch
-
-retina-face
+retinaface-pytorch
 
 pinecone-client
 jinja2
