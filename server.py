@@ -118,9 +118,6 @@ def _save_upload(upload, suffix):
 @app.get("/api/status")
 async def get_status():
     try:
-        _ensure_models()
-        index = _model_module.index
-        stats = index.describe_index_stats()
         import torch
         device = "cuda" if torch.cuda.is_available() else "cpu"
         return {"ok": True, "device": device}
