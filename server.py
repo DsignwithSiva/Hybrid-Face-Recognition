@@ -179,13 +179,6 @@ async def stream(job_id: str):
 
 
 # ═════════════════════════════════════
-# FRONTEND
-# ═════════════════════════════════════
-frontend_dir = os.path.join(os.path.dirname(__file__), "frontend")
-if os.path.isdir(frontend_dir):
-    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
-
-# ═════════════════════════════════════
 # STORE API
 # ═════════════════════════════════════
 def _bg_store(jid, video_path, namespace):
@@ -214,6 +207,13 @@ async def api_store(
     tmp = _save_upload(video, ".mp4")
     background_tasks.add_task(_bg_store, jid, tmp, namespace)
     return {"job_id": jid}
+
+# ═════════════════════════════════════
+# FRONTEND
+# ═════════════════════════════════════
+frontend_dir = os.path.join(os.path.dirname(__file__), "frontend")
+if os.path.isdir(frontend_dir):
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 
 # ─── Run ─────────────────────────────
