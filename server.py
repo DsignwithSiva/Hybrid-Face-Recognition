@@ -185,13 +185,7 @@ frontend_dir = os.path.join(os.path.dirname(__file__), "frontend")
 if os.path.isdir(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
-
-# ─── Run ─────────────────────────────
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=8000)
-
-    # ═════════════════════════════════════
+# ═════════════════════════════════════
 # STORE API
 # ═════════════════════════════════════
 def _bg_store(jid, video_path, namespace):
@@ -220,3 +214,11 @@ async def api_store(
     tmp = _save_upload(video, ".mp4")
     background_tasks.add_task(_bg_store, jid, tmp, namespace)
     return {"job_id": jid}
+
+
+# ─── Run ─────────────────────────────
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("server:app", host="0.0.0.0", port=8000)
+
+    
