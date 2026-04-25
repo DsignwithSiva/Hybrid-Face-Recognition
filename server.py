@@ -190,3 +190,33 @@ if os.path.isdir(frontend_dir):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("server:app", host="0.0.0.0", port=8000)
+
+    # ═════════════════════════════════════
+# STORE API
+# ═════════════════════════════════════
+def _bg_store(jid, video_path, namespace):
+    try:
+        with _capture(jid):
+            _ensure_models()
+            sm = _store_modes
+
+            sm.VIDEO_PATH = video_path
+            sm.VIDEO_NAMESPACE = namespace
+
+            sm.store_all_faces_from_video()
+
+        _job_done(jid, {"status": "done"})
+    except Exception as e:
+        _job_error(jid, str(e))
+
+
+@app.post("/api/store")
+async def api_store(
+    background_tasks: BackgroundTasks,
+    video: UploadFile = File(...),
+    namespace: str = Form("video_default"),
+):
+    jid = _new_job()
+    tmp = _save_upload(video, ".mp4")
+    background_tasks.add_task(_bg_store, jid, tmp, namespace)
+    return {"job_id": jid}
