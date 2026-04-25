@@ -1,3 +1,5 @@
+const API_BASE = "https://hybrid-face-recognition.onrender.com";
+
 /* ═══════════════════════════════════════════════════════════
    HYBRID FACE RECOGNITION — Frontend App Logic
    v2.0 — Real FastAPI Backend
@@ -98,50 +100,76 @@ function animateCounter(el, end, duration = 1200, suffix = '') {
 // ─── Backend Status & Real Stats ───────────────────────────
 async function loadStatus() {
   try {
-    const r = await fetch('/api/status');
+    const r = await fetch(`${API_BASE}/api/status`);
     if (!r.ok) throw new Error('offline');
+
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || 'offline');
 
     state.backendOnline = true;
-    state.namespaces    = data.namespaces || {};
+    state.namespaces = data.namespaces || {};
 
-    // Device badge
     const label = document.getElementById('deviceLabel');
     const badge = document.getElementById('deviceBadge');
-    const icon  = badge && badge.querySelector('i');
-    if (label) label.textContent = data.device === 'cuda' ? 'CUDA · GPU Ready' : 'CPU Mode';
-    if (badge && data.device === 'cuda') badge.style.borderColor = 'rgba(34,197,94,0.35)';
-    if (icon)  icon.style.color = data.device === 'cuda' ? 'var(--green)' : 'var(--orange)';
+    const icon = badge && badge.querySelector('i');
 
-    // Live face counts
+    if (label) {
+      label.textContent =
+        data.device === 'cuda'
+          ? 'CUDA · GPU Ready'
+          : 'CPU Mode';
+    }
+
+    if (badge && data.device === 'cuda') {
+      badge.style.borderColor = 'rgba(34,197,94,0.35)';
+    }
+
+    if (icon) {
+      icon.style.color =
+        data.device === 'cuda'
+          ? 'var(--green)'
+          : 'var(--orange)';
+    }
+
     const totalVecs = data.total_vectors || 0;
-    animateCounter(document.getElementById('stat-stored'), totalVecs);
+    animateCounter(
+      document.getElementById('stat-stored'),
+      totalVecs
+    );
 
-    // Status pill
     const pillTx = document.getElementById('statusText');
     if (pillTx) pillTx.textContent = 'Backend Online';
-    const pill = document.getElementById('statusPill');
-    if (pill)  pill.style.borderColor = 'rgba(34,197,94,0.35)';
 
-    // Namespace autocomplete for dropdowns
+    const pill = document.getElementById('statusPill');
+    if (pill) {
+      pill.style.borderColor = 'rgba(34,197,94,0.35)';
+    }
+
     const nsKeys = Object.keys(state.namespaces);
-    ['searchNamespace','batchNamespace'].forEach(id => {
+
+    ['searchNamespace', 'batchNamespace'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
+
       let dl = document.getElementById(`${id}-dl`);
+
       if (!dl) {
         dl = document.createElement('datalist');
         dl.id = `${id}-dl`;
         document.body.appendChild(dl);
         el.setAttribute('list', `${id}-dl`);
       }
-      dl.innerHTML = nsKeys.map(k =>
-        `<option value="${k}">${k} (${state.namespaces[k]} faces)</option>`
-      ).join('');
+
+      dl.innerHTML = nsKeys
+        .map(
+          k =>
+            `<option value="${k}">${k} (${state.namespaces[k]} faces)</option>`
+        )
+        .join('');
     });
 
     return data;
+
   } catch {
     const pillTx = document.getElementById('statusText');
     if (pillTx) pillTx.textContent = 'Connecting…';
@@ -442,7 +470,7 @@ function captureTerminalOutput() {
  */
 function streamJob(jobId) {
   return new Promise((resolve, reject) => {
-    const source = new EventSource(`/api/stream/${jobId}`);
+    const source = new EventSource(`${API_BASE}/api/stream/${jobId}`);
 
     source.onmessage = (event) => {
       let msg;
@@ -511,21 +539,45 @@ function fillNsFromFile(input, nsInputId) {
 /** POST to endpoint, stream SSE progress, return result. */
 async function _startJob(url, formData, label) {
   try {
-    const resp = await fetch(url, { method: 'POST', body: formData });
+    const resp = await fetch(`${API_BASE}${url}`, {
+      method: 'POST',
+      body: formData
+    });
+
     if (!resp.ok) {
       let detail = `HTTP ${resp.status}`;
-      try { const j = await resp.json(); detail = j.detail || detail; } catch {}
+
+      try {
+        const j = await resp.json();
+        detail = j.detail || detail;
+      } catch {}
+
       throw new Error(detail);
     }
+
     const { job_id } = await resp.json();
+
     const result = await streamJob(job_id);
+
     addLogEntry(`${label} — completed`, 'success');
-    loadStatus();    // refresh namespace counts
+
+    loadStatus();
+
     return result;
+
   } catch (err) {
     await termLog(`❌ ${err.message}`, 'error');
-    showToast(`${label} failed — see terminal`, 'error');
-    addLogEntry(`${label} failed: ${err.message}`, 'error');
+
+    showToast(
+      `${label} failed — see terminal`,
+      'error'
+    );
+
+    addLogEntry(
+      `${label} failed: ${err.message}`,
+      'error'
+    );
+
     return null;
   }
 }
